@@ -4,7 +4,7 @@
   import { downloadBlob } from '$lib/utils/download';
   import { deriveFileName } from '$lib/utils/file';
   import { formatBytes } from '$lib/utils/format';
-  import { PDFDocument } from 'pdf-lib';
+  import { PDFDocument, rgb } from 'pdf-lib';
 
   const MM_TO_PT = 72 / 25.4;
   const LOCAL_STORAGE_KEY = 'pdfToolkitSettings';
@@ -20,6 +20,31 @@
   type FitOption = 'fit' | 'fill' | 'stretch';
   type OrientationOption = 'auto' | 'portrait' | 'landscape';
 
+  type NormalizedRect = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+
+  type HighlightAnnotation = {
+    id: string;
+    type: 'highlight';
+    rect: NormalizedRect;
+    color: string;
+  };
+
+  type SignatureAnnotation = {
+    id: string;
+    type: 'signature';
+    rect: NormalizedRect;
+    imageData: string;
+  };
+
+  type Annotation = HighlightAnnotation | SignatureAnnotation;
+
+  type PageAnnotations = Record<number, Annotation[]>;
+
   type LoadedPdf = {
     id: string;
     name: string;
@@ -33,6 +58,7 @@
     lastSelectedIndex: number | null;
     pageOrder: number[]; // logical order of pages (indices in the original doc)
     previewUrl: string | null;
+    annotations: PageAnnotations;
   };
 
   type ImageAsset = {
@@ -60,6 +86,28 @@
   let customPageHeightMm = 297;
   let fitOption: FitOption = 'fit';
   let orientationOption: OrientationOption = 'auto';
+
+  let annotationPdfId: string | null = null;
+  let annotationPageIndex = 0;
+  let annotationCanvas: HTMLCanvasElement | null = null;
+  let annotationWrapper: HTMLDivElement | null = null;
+  let annotationCanvasSize = { width: 0, height: 0 };
+  let annotationMode: 'highlight' | 'signature' = 'highlight';
+  let annotationHighlightColor = '#fff59d';
+  let annotationDraftRect: NormalizedRect | null = null;
+  let annotationDragStart: { x: number; y: number; pointerId: number } | null = null;
+  let annotationBusy = false;
+
+  let signatureCanvas: HTMLCanvasElement | null = null;
+  let signatureCtx: CanvasRenderingContext2D | null = null;
+  let signatureDrawing = false;
+  let signatureDataUrl: string | null = null;
+  let signatureImageAspect = 0.35; // h / w
+  let signatureSizePercent = 25;
+  let signatureInkColor = '#0f172a';
+  let signatureCanvasReady = false;
+  let activeAnnotationPdf: LoadedPdf | null = null;
+  let activePageAnnotations: Annotation[] = [];
 
   const PAGE_SIZES: PageSizeOption[] = [
     { id: 'auto', label: 'Auto (fit image)', width: null, height: null },
@@ -144,6 +192,134 @@
     pdfFiles = [...pdfFiles.slice(0, idx), next, ...pdfFiles.slice(idx + 1)];
   }
 
+  function getAnnotationsForPage(pdf: LoadedPdf, pageIndex: number): Annotation[] {
+    return pdf.annotations[pageIndex] ?? [];
+  }
+
+  function updatePdfAnnotations(pdfId: string, pageIndex: number, updater: (prev: Annotation[]) => Annotation[]) {
+    const pdf = getPdfById(pdfId);
+    if (!pdf) return;
+    const current = getAnnotationsForPage(pdf, pageIndex);
+    const nextList = updater(current);
+    const nextAnnotations: PageAnnotations = { ...pdf.annotations };
+    if (nextList.length === 0) delete nextAnnotations[pageIndex];
+    else nextAnnotations[pageIndex] = nextList;
+    replacePdfById(pdfId, { annotations: nextAnnotations });
+  }
+
+  function getAnnotationCount(pdf: LoadedPdf, pageIndex: number) {
+    return getAnnotationsForPage(pdf, pageIndex).length;
+  }
+
+  function dataUrlToUint8Array(dataUrl: string): Uint8Array {
+    const parts = dataUrl.split(',');
+    const base64 = parts.length > 1 ? parts[1] : parts[0];
+    const binary = atob(base64);
+    const len = binary.length;
+    const out = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) out[i] = binary.charCodeAt(i);
+    return out;
+  }
+
+  function toBlobPart(bytes: Uint8Array): ArrayBuffer {
+    if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+      return bytes.buffer as ArrayBuffer;
+    }
+    const clone = bytes.slice();
+    return clone.buffer as ArrayBuffer;
+  }
+
+  function createPdfBlob(bytes: Uint8Array) {
+    return new Blob([toBlobPart(bytes)], { type: 'application/pdf' });
+  }
+
+  async function applyAnnotationsToPage(
+    doc: PDFDocument,
+    page: any,
+    annotations: Annotation[],
+    signatureCache: Map<string, any>
+  ) {
+    if (!annotations.length) return;
+    const { width, height } = page.getSize();
+    for (const annotation of annotations) {
+      if (annotation.type === 'highlight') {
+        const { r, g, b } = hexToRgbUnit(annotation.color);
+        const drawWidth = annotation.rect.width * width;
+        const drawHeight = annotation.rect.height * height;
+        if (drawWidth <= 0 || drawHeight <= 0) continue;
+        const x = annotation.rect.x * width;
+        const yTop = annotation.rect.y * height;
+        const y = height - (yTop + drawHeight);
+        page.drawRectangle({
+          x,
+          y,
+          width: drawWidth,
+          height: drawHeight,
+          color: rgb(r, g, b),
+          opacity: 0.35,
+          borderWidth: 0
+        });
+      } else if (annotation.type === 'signature') {
+        const drawWidth = annotation.rect.width * width;
+        const drawHeight = annotation.rect.height * height;
+        if (drawWidth <= 0 || drawHeight <= 0) continue;
+        let embedded = signatureCache.get(annotation.imageData);
+        if (!embedded) {
+          const bytes = dataUrlToUint8Array(annotation.imageData);
+          embedded = annotation.imageData.startsWith('data:image/png')
+            ? await doc.embedPng(bytes)
+            : await doc.embedJpg(bytes);
+          signatureCache.set(annotation.imageData, embedded);
+        }
+        const x = annotation.rect.x * width;
+        const yTop = annotation.rect.y * height;
+        const y = height - (yTop + drawHeight);
+        page.drawImage(embedded, { x, y, width: drawWidth, height: drawHeight });
+      }
+    }
+  }
+
+  function clamp01(value: number) {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  function normaliseRect(rect: NormalizedRect): NormalizedRect {
+    const x = clamp01(rect.x);
+    const y = clamp01(rect.y);
+    const width = clamp01(rect.width);
+    const height = clamp01(rect.height);
+    return {
+      x,
+      y,
+      width: Math.min(1 - x, width),
+      height: Math.min(1 - y, height)
+    };
+  }
+
+  function parseHexColor(hex: string): { r: number; g: number; b: number } {
+    let value = hex.replace(/[^a-f0-9]/gi, '');
+    if (value.length === 3) {
+      value = value.split('').map((c) => c + c).join('');
+    }
+    if (value.length !== 6) return { r: 255, g: 255, b: 0 };
+    const num = Number.parseInt(value, 16);
+    return {
+      r: (num >> 16) & 0xff,
+      g: (num >> 8) & 0xff,
+      b: num & 0xff
+    };
+  }
+
+  function hexToRgbUnit(hex: string) {
+    const { r, g, b } = parseHexColor(hex);
+    return { r: r / 255, g: g / 255, b: b / 255 };
+  }
+
+  function hexToCssRgba(hex: string, alpha: number) {
+    const { r, g, b } = parseHexColor(hex);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   async function buildReorderedBytes(pdfId: string): Promise<Uint8Array> {
     const live = getPdfById(pdfId);
     if (!live) throw new Error('PDF not found');
@@ -154,7 +330,16 @@
     });
     const out = await PDFDocument.create();
     const copied = await out.copyPages(src, live.pageOrder);
-    copied.forEach(p => out.addPage(p));
+    const signatureCache = new Map<string, any>();
+    for (let i = 0; i < copied.length; i += 1) {
+      const page = copied[i];
+      const originalIndex = live.pageOrder[i];
+      const annotations = getAnnotationsForPage(live, originalIndex);
+      if (annotations.length) {
+        await applyAnnotationsToPage(out, page, annotations, signatureCache);
+      }
+      out.addPage(page);
+    }
     return out.save();
   }
 
@@ -166,7 +351,7 @@
       if (!live) return;
 
       if (live.previewUrl) URL.revokeObjectURL(live.previewUrl);
-      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const url = URL.createObjectURL(createPdfBlob(bytes));
       replacePdfById(pdf.id, { previewUrl: url });
       statusMessage = 'Preview generated.';
     } catch (e) {
@@ -184,7 +369,7 @@
       const suffix = addPrivateSuffix ? '.private' : '';
       const base = pdf.name.replace(/\.pdf$/i, '');
       const name = `${base}-reordered${suffix}.pdf`;
-      downloadBlob(new Blob([bytes], { type: 'application/pdf' }), name);
+      downloadBlob(createPdfBlob(bytes), name);
       statusMessage = 'Downloaded reordered PDF.';
     } catch (e) {
       console.error('downloadReordered failed', e);
@@ -240,11 +425,13 @@
         const arrayBuffer = await file.arrayBuffer();
         const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         const pageCount = doc.getPageCount();
+        const keywordRaw = doc.getKeywords();
+        const keywordValue = Array.isArray(keywordRaw) ? keywordRaw.join(', ') : keywordRaw ?? undefined;
         const metadata = {
           Title: doc.getTitle(),
           Author: doc.getAuthor(),
           Subject: doc.getSubject(),
-          Keywords: doc.getKeywords()?.join(', '),
+          Keywords: keywordValue,
           Creator: doc.getCreator(),
           Producer: doc.getProducer()
         };
@@ -262,7 +449,8 @@
           pageSelection: new Set(),
           lastSelectedIndex: null,
           pageOrder: Array.from({ length: pageCount }, (_, i) => i),
-          previewUrl: null
+          previewUrl: null,
+          annotations: {}
         };
         newPdfs.push(pdf);
       } catch (err) {
@@ -388,7 +576,16 @@
 
       const inOrder = pdf.pageOrder.filter((idx) => pdf.pageSelection.has(idx));
       const copied = await out.copyPages(src, inOrder);
-      for (const page of copied) out.addPage(page);
+      const signatureCache = new Map<string, any>();
+      for (let i = 0; i < copied.length; i += 1) {
+        const page = copied[i];
+        const originalIndex = inOrder[i];
+        const annotations = getAnnotationsForPage(pdf, originalIndex);
+        if (annotations.length) {
+          await applyAnnotationsToPage(out, page, annotations, signatureCache);
+        }
+        out.addPage(page);
+      }
 
       const bytes = await out.save();
       const suffix = addPrivateSuffix ? '.private' : '';
@@ -398,7 +595,7 @@
         suffix: `pages-${inOrder.map((p) => p + 1).join('-')}${suffix}`
       });
 
-      downloadBlob(new Blob([bytes], { type: 'application/pdf' }), name);
+      downloadBlob(createPdfBlob(bytes), name);
       statusMessage = `Exported ${inOrder.length} page${inOrder.length === 1 ? '' : 's'} from ${pdf.name}.`;
     } catch (err) {
       console.error('Split/export failed', err);
@@ -429,6 +626,7 @@
     try {
       const out = await PDFDocument.create();
 
+      const signatureCache = new Map<string, any>();
       for (const pdf of pdfFiles) {
         const src = await PDFDocument.load(cloneBytes(pdf.arrayBuffer), {
           ignoreEncryption: true,
@@ -440,14 +638,22 @@
           : [...pdf.pageOrder];
 
         const copied = await out.copyPages(src, order);
-        for (const p of copied) out.addPage(p);
+        for (let i = 0; i < copied.length; i += 1) {
+          const page = copied[i];
+          const originalIndex = order[i];
+          const annotations = getAnnotationsForPage(pdf, originalIndex);
+          if (annotations.length) {
+            await applyAnnotationsToPage(out, page, annotations, signatureCache);
+          }
+          out.addPage(page);
+        }
       }
 
       const bytes = await out.save();
       const base = pdfFiles[0].name.replace(/\.pdf$/i, '') || 'merged';
       const suffix = addPrivateSuffix ? '.private' : '';
       const name = `${base}-merged${suffix}.pdf`;
-      downloadBlob(new Blob([bytes], { type: 'application/pdf' }), name);
+      downloadBlob(createPdfBlob(bytes), name);
       statusMessage = `Merged ${pdfFiles.length} PDFs.`;
     } catch (e: unknown) {
       console.error('Merge failed', e);
@@ -456,6 +662,328 @@
       processing = false;
     }
   }
+
+  // --- Annotation workflow ---
+  function resetAnnotationDraft() {
+    annotationDraftRect = null;
+    annotationDragStart = null;
+  }
+
+  async function openAnnotation(pdf: LoadedPdf, pageIndex: number) {
+    annotationPdfId = pdf.id;
+    annotationPageIndex = pageIndex;
+    annotationMode = 'highlight';
+    resetAnnotationDraft();
+    await tick();
+    await renderAnnotationPage();
+  }
+
+  function closeAnnotationOverlay() {
+    annotationPdfId = null;
+    resetAnnotationDraft();
+    signatureCanvasReady = false;
+    signatureCanvas = null;
+    signatureCtx = null;
+  }
+
+  function computeAnnotationScale(baseWidth: number) {
+    const wrapperWidth = annotationWrapper?.clientWidth ?? 0;
+    const targetWidth = wrapperWidth > 0 ? wrapperWidth : Math.min(900, (typeof window !== 'undefined' ? window.innerWidth - 80 : 900));
+    const scale = targetWidth > 0 ? targetWidth / baseWidth : 1.5;
+    return Math.min(3, Math.max(1, scale));
+  }
+
+  async function renderAnnotationPage() {
+    if (!annotationPdfId || !annotationCanvas || !pdfjsLib) return;
+    const pdf = getPdfById(annotationPdfId);
+    if (!pdf) return;
+    annotationBusy = true;
+    const loadingTask = pdfjsLib.getDocument({ data: cloneBytes(pdf.arrayBuffer) });
+
+    try {
+      const doc = await loadingTask.promise;
+      const page = await doc.getPage(annotationPageIndex + 1);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scale = computeAnnotationScale(baseViewport.width);
+      const viewport = page.getViewport({ scale });
+      annotationCanvas.width = Math.floor(viewport.width);
+      annotationCanvas.height = Math.floor(viewport.height);
+      annotationCanvasSize = { width: viewport.width, height: viewport.height };
+      annotationCanvas.style.width = `${viewport.width}px`;
+      annotationCanvas.style.height = `${viewport.height}px`;
+      const ctx = annotationCanvas.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      annotationWrapper?.scrollTo?.(0, 0);
+    } catch (err) {
+      console.error('Annotation render failed', err);
+      errorMessage = 'Unable to render page for annotation.';
+    } finally {
+      annotationBusy = false;
+      await loadingTask.destroy();
+    }
+  }
+
+  function getAnnotationPoint(event: PointerEvent) {
+    if (!annotationCanvas) return null;
+    const rect = annotationCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const x = clamp01((event.clientX - rect.left) / rect.width);
+    const y = clamp01((event.clientY - rect.top) / rect.height);
+    return { x, y };
+  }
+
+  function onAnnotationPointerDown(event: PointerEvent) {
+    if (!annotationPdfId) return;
+    if (annotationMode === 'highlight' && event.button === 0) {
+      const point = getAnnotationPoint(event);
+      if (!point) return;
+      resetAnnotationDraft();
+      annotationDragStart = { ...point, pointerId: event.pointerId };
+      annotationDraftRect = { x: point.x, y: point.y, width: 0, height: 0 };
+      (event.target as Element)?.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    } else if (annotationMode === 'signature' && event.button === 0) {
+      placeSignatureFromEvent(event);
+    }
+  }
+
+  function onAnnotationPointerMove(event: PointerEvent) {
+    if (!annotationPdfId) return;
+    if (annotationMode !== 'highlight') return;
+    if (!annotationDragStart || annotationDragStart.pointerId !== event.pointerId) return;
+    const point = getAnnotationPoint(event);
+    if (!point) return;
+    const start = annotationDragStart;
+    const rect = {
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y)
+    };
+    annotationDraftRect = rect;
+    event.preventDefault();
+  }
+
+  function onAnnotationPointerUp(event: PointerEvent) {
+    if (!annotationPdfId) return;
+    if (annotationMode !== 'highlight') return;
+    if (!annotationDragStart || annotationDragStart.pointerId !== event.pointerId) return;
+    const point = getAnnotationPoint(event);
+    if (!point) {
+      resetAnnotationDraft();
+      return;
+    }
+    const start = annotationDragStart;
+    const rect = normaliseRect({
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y)
+    });
+    if (rect.width > 0.01 && rect.height > 0.01) {
+      addHighlight(rect);
+    }
+    resetAnnotationDraft();
+    event.preventDefault();
+  }
+
+  function onAnnotationPointerCancel(event: PointerEvent) {
+    if (!annotationDragStart || annotationDragStart.pointerId !== event.pointerId) return;
+    resetAnnotationDraft();
+  }
+
+  function addHighlight(rect: NormalizedRect) {
+    if (!annotationPdfId) return;
+    const pdf = getPdfById(annotationPdfId);
+    if (!pdf) return;
+    const highlight: HighlightAnnotation = {
+      id: crypto.randomUUID(),
+      type: 'highlight',
+      rect,
+      color: annotationHighlightColor
+    };
+    updatePdfAnnotations(pdf.id, annotationPageIndex, (prev) => [...prev, highlight]);
+    statusMessage = `Added highlight on Page ${annotationPageIndex + 1}.`;
+    errorMessage = '';
+  }
+
+  function placeSignatureFromEvent(event: PointerEvent) {
+    if (!annotationPdfId) return;
+    if (!signatureDataUrl) {
+      errorMessage = 'Create or upload a signature first.';
+      return;
+    }
+    const point = getAnnotationPoint(event);
+    if (!point) return;
+    const aspect = signatureImageAspect || 0.35;
+    let width = clamp01(signatureSizePercent / 100);
+    let height = width * aspect;
+    if (height > 1) {
+      height = 1;
+      width = Math.min(1, height / aspect);
+    }
+    const x = clamp01(Math.min(point.x - width / 2, 1 - width));
+    const y = clamp01(Math.min(point.y - height / 2, 1 - height));
+    const signature: SignatureAnnotation = {
+      id: crypto.randomUUID(),
+      type: 'signature',
+      rect: normaliseRect({ x, y, width, height }),
+      imageData: signatureDataUrl
+    };
+    updatePdfAnnotations(annotationPdfId, annotationPageIndex, (prev) => [...prev, signature]);
+    statusMessage = `Placed signature on Page ${annotationPageIndex + 1}.`;
+    errorMessage = '';
+  }
+
+  function removeAnnotation(annotationId: string) {
+    if (!annotationPdfId) return;
+    updatePdfAnnotations(annotationPdfId, annotationPageIndex, (prev) => prev.filter((item) => item.id !== annotationId));
+    statusMessage = 'Removed annotation.';
+  }
+
+  function clearAnnotationsForPage() {
+    if (!annotationPdfId) return;
+    updatePdfAnnotations(annotationPdfId, annotationPageIndex, () => []);
+    statusMessage = `Cleared annotations on Page ${annotationPageIndex + 1}.`;
+  }
+
+  async function jumpAnnotationPage(delta: number) {
+    if (!annotationPdfId) return;
+    const pdf = getPdfById(annotationPdfId);
+    if (!pdf) return;
+    const next = annotationPageIndex + delta;
+    if (next < 0 || next >= pdf.pageCount) return;
+    annotationPageIndex = next;
+    resetAnnotationDraft();
+    await tick();
+    await renderAnnotationPage();
+  }
+
+  function prepareSignatureCanvas() {
+    if (!signatureCanvas) return;
+    signatureCanvas.width = 600;
+    signatureCanvas.height = 200;
+    signatureCanvas.style.width = '100%';
+    signatureCanvas.style.height = 'auto';
+    signatureCtx = signatureCanvas.getContext('2d');
+    if (!signatureCtx) return;
+    signatureCtx.lineWidth = 2.5;
+    signatureCtx.lineCap = 'round';
+    signatureCtx.strokeStyle = signatureInkColor;
+    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    signatureCanvasReady = true;
+  }
+
+  function getSignatureCanvasPoint(event: PointerEvent) {
+    if (!signatureCanvas) return null;
+    const rect = signatureCanvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+  }
+
+  function onSignaturePointerDown(event: PointerEvent) {
+    if (!signatureCanvas || !signatureCtx) return;
+    const point = getSignatureCanvasPoint(event);
+    if (!point) return;
+    signatureDrawing = true;
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(point.x, point.y);
+    signatureCanvas.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function onSignaturePointerMove(event: PointerEvent) {
+    if (!signatureDrawing || !signatureCtx) return;
+    const point = getSignatureCanvasPoint(event);
+    if (!point) return;
+    signatureCtx.lineTo(point.x, point.y);
+    signatureCtx.stroke();
+    event.preventDefault();
+  }
+
+  function onSignaturePointerUp(event: PointerEvent) {
+    if (!signatureDrawing) return;
+    signatureDrawing = false;
+    signatureCtx?.closePath();
+    signatureCanvas?.releasePointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function clearSignatureCanvas() {
+    if (!signatureCanvas || !signatureCtx) return;
+    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    signatureCtx.strokeStyle = signatureInkColor;
+    signatureCtx.beginPath();
+    signatureCtx.closePath();
+  }
+
+  function updateSignatureAspect(dataUrl: string) {
+    if (!dataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth > 0) {
+        signatureImageAspect = img.naturalHeight / img.naturalWidth;
+      }
+    };
+    img.src = dataUrl;
+  }
+
+  function useSignatureFromCanvas() {
+    if (!signatureCanvas) return;
+    const dataUrl = signatureCanvas.toDataURL('image/png');
+    signatureDataUrl = dataUrl;
+    updateSignatureAspect(dataUrl);
+    statusMessage = 'Signature saved. Tap the page to place it.';
+  }
+
+  async function onSignatureFileInput(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      signatureDataUrl = dataUrl;
+      updateSignatureAspect(dataUrl);
+      statusMessage = 'Signature image loaded. Tap the page to place it.';
+    } catch (err) {
+      console.error('Signature load failed', err);
+      errorMessage = 'Unable to load signature image.';
+    } finally {
+      input.value = '';
+    }
+  }
+
+  $: if (annotationPdfId && signatureCanvas && !signatureCanvasReady) {
+    prepareSignatureCanvas();
+  }
+
+  $: if (!annotationPdfId) {
+    annotationWrapper = null;
+    annotationCanvas = null;
+  }
+
+  $: if (signatureCtx) {
+    signatureCtx.strokeStyle = signatureInkColor;
+    signatureCtx.lineWidth = 2.5;
+    signatureCtx.lineCap = 'round';
+  }
+
+  $: activeAnnotationPdf = annotationPdfId
+    ? pdfFiles.find((pdf) => pdf.id === annotationPdfId) ?? null
+    : null;
+  $: activePageAnnotations = activeAnnotationPdf
+    ? getAnnotationsForPage(activeAnnotationPdf, annotationPageIndex)
+    : [];
+
 
   // --- Images: add drag & drop reorder ---
   let imgDragPos: number | null = null;
@@ -629,7 +1157,7 @@
       const suffix = addPrivateSuffix ? '.private' : '';
       const base = imageAssets[0]?.name.replace(/\.[^.]+$/, '') ?? 'images';
       const name = `${base}-images${suffix}.pdf`;
-      downloadBlob(new Blob([bytes], { type: 'application/pdf' }), name);
+      downloadBlob(createPdfBlob(bytes), name);
       statusMessage = `Created PDF with ${imageAssets.length} image${imageAssets.length === 1 ? '' : 's'}.`;
     } catch (err) {
       console.error('Images to PDF failed', err);
@@ -650,7 +1178,7 @@
       doc.setCreator('');
       const bytes = await doc.save();
       const oldUrl = pdf.objectUrl;
-      const newUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const newUrl = URL.createObjectURL(createPdfBlob(bytes));
       replacePdfById(pdf.id, {
         arrayBuffer: bytes,
         objectUrl: newUrl,
@@ -829,7 +1357,7 @@
                         title="Reordered preview"
                         src={pdf.previewUrl}
                         class="h-[480px] w-full bg-slate-950"
-                      />
+                      ></iframe>
                     </div>
                   {/if}
 
@@ -850,7 +1378,7 @@
                       >
                         <div class="relative">
                           <!-- MOBILE: visible by default; DESKTOP: show on hover -->
-                          <div class="absolute right-2 top-2 z-10 flex gap-1 opacity-100 sm:opacity-0 transition sm:group-hover:opacity-100">
+                          <div class="reorder-ctrls absolute right-2 top-2 z-10 flex gap-1 opacity-100 lg:opacity-0 transition lg:group-hover:opacity-100">
                             <button
                               type="button"
                               class="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
@@ -880,7 +1408,21 @@
                             {/if}
                           </button>
                         </div>
-                        <span class="mt-2 block text-slate-400">Page {pageIndex + 1}</span>
+                        <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                          <span>Page {pageIndex + 1}</span>
+                          <button
+                            type="button"
+                            class="rounded-full border border-slate-700 px-2 py-1 text-[11px] text-slate-300 transition hover:border-emerald-400/60 hover:text-emerald-200"
+                            on:click|stopPropagation={() => openAnnotation(pdf, pageIndex)}
+                          >
+                            Annotate
+                            {#if getAnnotationCount(pdf, pageIndex) > 0}
+                              <span class="ml-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200">
+                                {getAnnotationCount(pdf, pageIndex)}
+                              </span>
+                            {/if}
+                          </button>
+                        </div>
                       </div>
                     {/each}
                   </div>
@@ -917,7 +1459,7 @@
                   on:drop={() => onImageDrop(i)}
                 >
                   <!-- MOBILE: visible; DESKTOP: only on hover -->
-                  <div class="absolute right-2 top-2 z-10 flex gap-1 sm:hidden sm:group-hover:flex">
+                  <div class="reorder-ctrls absolute right-2 top-2 z-10 flex gap-1 opacity-100 lg:opacity-0 transition lg:group-hover:opacity-100">
                     <button
                       type="button"
                       class="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
@@ -1071,4 +1613,351 @@
         </div>
       {/if}
     </div>
+  </div>
+  {#if annotationPdfId && activeAnnotationPdf}
+    <div class="annotation-modal" role="dialog" aria-modal="true">
+      <div class="annotation-surface">
+        <div class="annotation-sidebar">
+          <div class="annotation-sidebar__header">
+            <div>
+              <h4 class="text-sm font-semibold text-slate-100">Annotate {activeAnnotationPdf.name}</h4>
+              <p class="text-xs text-slate-400">Page {annotationPageIndex + 1} of {activeAnnotationPdf.pageCount}</p>
+            </div>
+            <button
+              type="button"
+              on:click={closeAnnotationOverlay}
+              class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-emerald-400/60 hover:text-emerald-200"
+            >
+              Done
+            </button>
+          </div>
+
+          <div class="annotation-sidebar__section">
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class={`annotation-mode-btn ${annotationMode === 'highlight' ? 'annotation-mode-btn--active' : ''}`}
+                on:click={() => (annotationMode = 'highlight')}
+              >
+                Highlight
+              </button>
+              <button
+                type="button"
+                class={`annotation-mode-btn ${annotationMode === 'signature' ? 'annotation-mode-btn--active' : ''}`}
+                on:click={() => (annotationMode = 'signature')}
+              >
+                Signature
+              </button>
+            </div>
+          </div>
+
+          {#if annotationMode === 'highlight'}
+            <div class="annotation-sidebar__section space-y-3">
+              <label class="flex items-center justify-between text-xs text-slate-300">
+                Highlight colour
+                <input type="color" bind:value={annotationHighlightColor} class="h-8 w-16 cursor-pointer rounded border border-slate-700 bg-transparent" />
+              </label>
+              <button
+                type="button"
+                on:click={clearAnnotationsForPage}
+                class="w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-red-200 disabled:opacity-40"
+                disabled={activePageAnnotations.length === 0}
+              >
+                Clear page annotations
+              </button>
+            </div>
+          {:else}
+            <div class="annotation-sidebar__section space-y-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-300">Draw signature</p>
+                <canvas
+                  bind:this={signatureCanvas}
+                  class="annotation-signature-pad"
+                  on:pointerdown={onSignaturePointerDown}
+                  on:pointermove={onSignaturePointerMove}
+                  on:pointerup={onSignaturePointerUp}
+                  on:pointercancel={onSignaturePointerUp}
+                ></canvas>
+                <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
+                  <label class="flex items-center gap-2">
+                    Ink colour
+                    <input type="color" bind:value={signatureInkColor} class="h-8 w-16 cursor-pointer rounded border border-slate-700 bg-transparent" />
+                  </label>
+                  <button type="button" on:click={clearSignatureCanvas} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-red-200">Clear</button>
+                  <button type="button" on:click={useSignatureFromCanvas} class="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200 transition hover:bg-emerald-500/20">Use drawing</button>
+                </div>
+              </div>
+
+              <div class="space-y-2 text-xs text-slate-400">
+                <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-dashed border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-emerald-200">
+                  Upload signature image
+                  <input type="file" accept="image/png, image/jpeg" on:change={onSignatureFileInput} class="sr-only" />
+                </label>
+                {#if signatureDataUrl}
+                  <div class="flex flex-col gap-2 rounded-lg border border-slate-800/70 bg-slate-900/60 p-3">
+                    <p class="text-xs text-slate-300">Current signature preview</p>
+                    <img src={signatureDataUrl} alt="Signature preview" class="max-h-24 w-auto self-start rounded bg-white/90 p-2" />
+                    <label class="flex items-center gap-2 text-xs text-slate-300">
+                      Size
+                      <input type="range" min="10" max="60" bind:value={signatureSizePercent} />
+                      <span class="text-[11px] text-slate-500">{signatureSizePercent}% width</span>
+                    </label>
+                  </div>
+                {:else}
+                  <p class="text-[11px] text-slate-500">Draw or upload a signature, then click on the page to place it.</p>
+                {/if}
+              </div>
+            </div>
+          {/if}
+
+          <div class="annotation-sidebar__section">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-300">Annotations on this page</p>
+            {#if activePageAnnotations.length === 0}
+              <p class="mt-2 text-xs text-slate-500">No annotations yet.</p>
+            {:else}
+              <ul class="mt-2 space-y-2 text-xs text-slate-300">
+                {#each activePageAnnotations as item (item.id)}
+                  <li class="flex items-center justify-between gap-2 rounded-lg border border-slate-800/70 bg-slate-900/40 px-2 py-1">
+                    <span>
+                      {item.type === 'highlight' ? 'Highlight' : 'Signature'}
+                    </span>
+                    <button type="button" on:click={() => removeAnnotation(item.id)} class="rounded-full border border-red-400/60 px-2 py-0.5 text-[11px] text-red-200 transition hover:bg-red-500/10">Remove</button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+
+          <div class="annotation-sidebar__section">
+            <div class="flex gap-2">
+              <button
+                type="button"
+                on:click={() => jumpAnnotationPage(-1)}
+                class="flex-1 rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-emerald-400/60 hover:text-emerald-200 disabled:opacity-40"
+                disabled={annotationPageIndex === 0}
+              >
+                ◀ Prev page
+              </button>
+              <button
+                type="button"
+                on:click={() => jumpAnnotationPage(1)}
+                class="flex-1 rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-emerald-400/60 hover:text-emerald-200 disabled:opacity-40"
+                disabled={annotationPageIndex >= activeAnnotationPdf.pageCount - 1}
+              >
+                Next page ▶
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="annotation-main">
+          <div
+            class="annotation-canvas-wrapper"
+            bind:this={annotationWrapper}
+            on:pointerdown={onAnnotationPointerDown}
+            on:pointermove={onAnnotationPointerMove}
+            on:pointerup={onAnnotationPointerUp}
+            on:pointercancel={onAnnotationPointerCancel}
+            on:contextmenu|preventDefault
+            role="presentation"
+          >
+            <canvas bind:this={annotationCanvas} class="annotation-canvas"></canvas>
+            <div class="annotation-layer">
+              {#if annotationBusy}
+                <div class="annotation-loading">Rendering page…</div>
+              {/if}
+              {#each activePageAnnotations as ann (ann.id)}
+                {#if ann.type === 'highlight'}
+                  <div
+                    class="annotation-highlight"
+                    style={`left:${ann.rect.x * 100}%; top:${ann.rect.y * 100}%; width:${ann.rect.width * 100}%; height:${ann.rect.height * 100}%; background:${hexToCssRgba(ann.color, 0.3)}; border-color:${hexToCssRgba(ann.color, 0.6)};`}
+                  ></div>
+                {:else}
+                  <img
+                    src={ann.imageData}
+                    alt="Signature"
+                    class="annotation-signature"
+                    style={`left:${ann.rect.x * 100}%; top:${ann.rect.y * 100}%; width:${ann.rect.width * 100}%; height:${ann.rect.height * 100}%;`}
+                  />
+                {/if}
+              {/each}
+              {#if annotationDraftRect}
+                <div
+                  class="annotation-highlight annotation-highlight--draft"
+                  style={`left:${annotationDraftRect.x * 100}%; top:${annotationDraftRect.y * 100}%; width:${annotationDraftRect.width * 100}%; height:${annotationDraftRect.height * 100}%; background:${hexToCssRgba(annotationHighlightColor, 0.25)}; border-color:${hexToCssRgba(annotationHighlightColor, 0.4)};`}
+                ></div>
+              {/if}
+            </div>
+          </div>
+          <p class="annotation-hint text-xs text-slate-400">
+            {#if annotationMode === 'highlight'}
+              Click and drag over the preview to add a highlight. Drag again to add more.
+            {:else}
+              Tap anywhere on the page preview to place the saved signature.
+            {/if}
+          </p>
+        </div>
+      </div>
+    </div>
+  {/if}
 </ToolCard>
+
+<style>
+  .annotation-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    padding: 2rem 1.5rem;
+    background: rgba(2, 6, 23, 0.82);
+    backdrop-filter: blur(6px);
+    overflow: auto;
+  }
+
+  .annotation-surface {
+    margin: auto;
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1200px;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(71, 85, 105, 0.65);
+    background: rgba(15, 23, 42, 0.94);
+    padding: 1.5rem;
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.7);
+  }
+
+  .annotation-sidebar {
+    width: 20rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+  }
+
+  .annotation-sidebar__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .annotation-sidebar__section + .annotation-sidebar__section {
+    border-top: 1px solid rgba(71, 85, 105, 0.45);
+    padding-top: 0.75rem;
+  }
+
+  .annotation-mode-btn {
+    flex: 1;
+    border-radius: 9999px;
+    border: 1px solid rgba(71, 85, 105, 0.7);
+    background: rgba(15, 23, 42, 0.6);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    color: #cbd5f5;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  }
+
+  .annotation-mode-btn:hover {
+    border-color: rgba(16, 185, 129, 0.6);
+    color: #a7f3d0;
+  }
+
+  .annotation-mode-btn--active {
+    border-color: rgba(16, 185, 129, 0.85);
+    background: rgba(16, 185, 129, 0.18);
+    color: #bbf7d0;
+  }
+
+  .annotation-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: calc(100vh - 4rem);
+  }
+
+  .annotation-canvas-wrapper {
+    position: relative;
+    overflow: auto;
+    max-height: calc(100vh - 6rem);
+    background: #020617;
+    border: 1px solid rgba(71, 85, 105, 0.55);
+    border-radius: 1rem;
+    padding: 0.5rem;
+  }
+
+  .annotation-canvas {
+    display: block;
+    margin: 0 auto;
+    background: #111827;
+    border-radius: 0.5rem;
+  }
+
+  .annotation-layer {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+  }
+
+  .annotation-highlight {
+    position: absolute;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    border-radius: 0.3rem;
+  }
+
+  .annotation-highlight--draft {
+    border-style: dashed;
+  }
+
+  .annotation-signature {
+    position: absolute;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(2, 6, 23, 0.6));
+  }
+
+  .annotation-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    color: #e2e8f0;
+    background: rgba(15, 23, 42, 0.6);
+  }
+
+  .annotation-signature-pad {
+    width: 100%;
+    height: 160px;
+    border-radius: 0.75rem;
+    border: 1px dashed rgba(71, 85, 105, 0.6);
+    background: #f8fafc;
+    touch-action: none;
+  }
+
+  .annotation-hint {
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 900px) {
+    .annotation-surface {
+      flex-direction: column;
+      max-width: 100%;
+    }
+
+    .annotation-sidebar {
+      width: 100%;
+      max-height: fit-content;
+      overflow: visible;
+    }
+
+    .annotation-main {
+      max-height: fit-content;
+    }
+
+    .annotation-canvas-wrapper {
+      max-height: 70vh;
+    }
+  }
+</style>
