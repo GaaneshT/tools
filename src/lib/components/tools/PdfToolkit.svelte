@@ -879,9 +879,12 @@
   function getSignatureCanvasPoint(event: PointerEvent) {
     if (!signatureCanvas) return null;
     const rect = signatureCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const scaleX = signatureCanvas.width / rect.width;
+    const scaleY = signatureCanvas.height / rect.height;
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY
     };
   }
 
