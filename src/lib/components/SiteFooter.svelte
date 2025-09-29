@@ -4,12 +4,22 @@
 	>
 		<p>© {new Date().getFullYear()} Gaanesh Theivasigamani · MIT License</p>
 		<div class="flex items-center gap-2">
-			<span
-				class="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 px-3 py-1 text-emerald-200"
+			<a
+				href="https://blog.gaanesh.com"
+				class="hover:text-emerald-200"
+				target="_blank"
+				rel="noreferrer noopener"
+				>My Blog</a
 			>
-				<span class="size-1.5 rounded-full bg-emerald-400" aria-hidden="true"></span>
-				Files never leave your device
-			</span>
+			<span aria-hidden="true">·</span>
+			<a
+				href="https://gaanesh.com"
+				class="hover:text-emerald-200"
+				target="_blank"
+				rel="noreferrer noopener"
+				>Gaanesh.com</a
+			>
+
 		</div>
 	</div>
 </footer>

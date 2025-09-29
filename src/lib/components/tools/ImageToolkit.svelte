@@ -48,6 +48,16 @@
     { value: 'avatar_tiktok',    label: 'TikTok Profile · ≥200×200 (square)', width: 200, height: 200, maintainAspect: true, shape: 'square' }
   ];
 
+  const digitsOnlyKeydown = (e: KeyboardEvent) => {
+  const allowed = [
+    'Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End'
+  ];
+  if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+  if (/^[0-9]$/.test(e.key)) return;
+  e.preventDefault(); // block e, +, -, ., etc.
+};
+
+
   const PRESET_LOOKUP = new Map(PRESET_OPTIONS.map((preset) => [preset.value, preset] as const));
 
   type Smoothing = 'low' | 'medium' | 'high';
@@ -972,23 +982,33 @@ const generateResult = async (downloadNow: boolean) => {
             <div class="grid grid-cols-2 gap-3">
               <label class="flex flex-col gap-1 text-xs tracking-wide text-slate-500 uppercase">
                 Width (px)
-                <input
-                  type="number"
-                  min="16"
-                  value={targetWidth ?? ''}
-                  on:input={handleTargetWidthInput}
-                  class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100"
-                />
+				<input
+				type="number"
+				inputmode="numeric"       
+				pattern="[0-9]*"          
+				step="1"
+				min="16"
+				value={targetWidth ?? ''}
+				on:keydown={digitsOnlyKeydown}
+				on:wheel|preventDefault   
+				on:input={handleTargetWidthInput}
+				class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100"
+				/>
               </label>
               <label class="flex flex-col gap-1 text-xs tracking-wide text-slate-500 uppercase">
                 Height (px)
-                <input
-                  type="number"
-                  min="16"
-                  value={targetHeight ?? ''}
-                  on:input={handleTargetHeightInput}
-                  class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100"
-                />
+				<input
+				type="number"
+				inputmode="numeric"       
+				pattern="[0-9]*"          
+				step="1"
+				min="16"
+				value={targetHeight ?? ''}
+				on:keydown={digitsOnlyKeydown}
+				on:wheel|preventDefault   
+				on:input={handleTargetHeightInput}
+				class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100"
+				/>
               </label>
             </div>
 
@@ -1154,11 +1174,13 @@ const generateResult = async (downloadNow: boolean) => {
 </ToolCard>
 
 <style>
+  /* --- layout for the preview area --- */
   .preview-frame {
     display: grid;
     place-items: center;
     width: 100%;
     max-width: 100%;
+    overflow: hidden; /* clip any protruding cropper handles/canvas */
   }
   .preview-frame--resize { justify-items: center; }
   .preview-frame__box {
@@ -1185,7 +1207,32 @@ const generateResult = async (downloadNow: boolean) => {
     width: 100%;
     color: rgba(148, 163, 184, 1);
   }
-  .preview-frame--crop :global(.cropper-container) { margin: 0 auto; }
+
+  /* --- cropper look & feel --- */
+  :global(.cropper-container) { background-color: rgba(2, 6, 23, 0.9); }
+  :global(.cropper-view-box) {
+    border: 1px solid rgba(16, 185, 129, 0.8);
+    border-radius: 0.75rem;
+  }
+  :global(.cropper-face) { background-color: rgba(16, 185, 129, 0.08); }
+  :global(.cropper-line), :global(.cropper-point) {
+    background-color: rgba(16, 185, 129, 0.9);
+    border-radius: 0.25rem;
+  }
+  :global(.cropper-point.point-se),
+  :global(.cropper-point.point-sw),
+  :global(.cropper-point.point-nw),
+  :global(.cropper-point.point-ne) {
+    width: 12px;
+    height: 12px;
+  }
+  :global(.cropper-line)::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  /* --- crop shapes --- */
   .preview-frame--crop.crop-shape-circle { border-radius: 9999px; }
   .preview-frame--crop.crop-shape-circle .preview-image { border-radius: 9999px; }
   .preview-frame--crop.crop-shape-circle :global(.cropper-crop-box),
@@ -1193,6 +1240,8 @@ const generateResult = async (downloadNow: boolean) => {
   .preview-frame--crop.crop-shape-circle :global(.cropper-face) {
     border-radius: 9999px !important;
   }
+
+  /* --- toggle buttons --- */
   .shape-toggle {
     border-radius: 9999px;
     border: 1px solid rgba(51, 65, 85, 0.8);
@@ -1216,26 +1265,29 @@ const generateResult = async (downloadNow: boolean) => {
     background-color: rgba(16, 185, 129, 0.12);
     color: rgba(167, 243, 208, 1);
   }
-  :global(.cropper-container) { background-color: rgba(2, 6, 23, 0.9); }
-  :global(.cropper-view-box) {
-    border: 1px solid rgba(16, 185, 129, 0.8);
-    border-radius: 0.75rem;
+
+  /* --- mobile overflow fixes --- */
+  :root, body { overflow-x: hidden; }
+
+  /* make the <img> strictly fit the container in crop mode */
+  .preview-frame--crop .preview-image {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
   }
-  :global(.cropper-face) { background-color: rgba(16, 185, 129, 0.08); }
-  :global(.cropper-line), :global(.cropper-point) {
-    background-color: rgba(16, 185, 129, 0.9);
-    border-radius: 0.25rem;
+
+  /* clamp Cropper’s internal boxes to the container width */
+  .preview-frame--crop :global(.cropper-container),
+  .preview-frame--crop :global(.cropper-wrap-box),
+  .preview-frame--crop :global(.cropper-canvas),
+  .preview-frame--crop :global(.cropper-drag-box),
+  .preview-frame--crop :global(.cropper-crop-box),
+  .preview-frame--crop :global(.cropper-modal) {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
   }
-  :global(.cropper-point.point-se),
-  :global(.cropper-point.point-sw),
-  :global(.cropper-point.point-nw),
-  :global(.cropper-point.point-ne) {
-    width: 12px;
-    height: 12px;
-  }
-  :global(.cropper-line)::before {
-    content: '';
-    position: absolute;
-    inset: -6px;
-  }
+
+  /* keep the cropper centered inside the frame */
+  .preview-frame--crop :global(.cropper-container) { margin: 0 auto; }
 </style>
