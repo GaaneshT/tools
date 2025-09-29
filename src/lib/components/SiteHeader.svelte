@@ -1,12 +1,12 @@
 <script lang="ts">
 	const navLinks = [
 		{
-			href: 'https://github.com/gaanesh/tools',
-			label: 'GitHub'
+			href: 'https://blog.gaanesh.com',
+			label: 'My Blog'
 		},
 		{
 			href: 'https://gaanesh.com',
-			label: 'gaanesh.com'
+			label: 'Gaanesh.com'
 		}
 	];
 </script>
@@ -19,9 +19,9 @@
 				class="text-lg font-semibold tracking-tight text-slate-50 hover:text-emerald-300"
 				aria-label="gaanesh tools home"
 			>
-				tools.gaanesh.com
+				Toolkits
 			</a>
-			<p class="text-sm text-slate-400">Browser-only, privacy-first file utilities</p>
+			<p class="text-sm text-slate-400">Browser-only, file utilities for privacy</p>
 		</div>
 		<nav aria-label="Primary">
 			<ul class="flex items-center gap-4 text-sm font-medium text-slate-300">
