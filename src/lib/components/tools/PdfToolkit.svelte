@@ -849,7 +849,8 @@
                         } p-2 text-left text-xs text-slate-300`}
                       >
                         <div class="relative">
-                          <div class="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                          <!-- MOBILE: visible by default; DESKTOP: show on hover -->
+                          <div class="absolute right-2 top-2 z-10 flex gap-1 opacity-100 sm:opacity-0 transition sm:group-hover:opacity-100">
                             <button
                               type="button"
                               class="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
@@ -915,7 +916,8 @@
                   on:dragover|preventDefault={onImageDragOver}
                   on:drop={() => onImageDrop(i)}
                 >
-                  <div class="absolute right-2 top-2 z-10 hidden gap-1 group-hover:flex">
+                  <!-- MOBILE: visible; DESKTOP: only on hover -->
+                  <div class="absolute right-2 top-2 z-10 flex gap-1 sm:hidden sm:group-hover:flex">
                     <button
                       type="button"
                       class="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
@@ -949,40 +951,74 @@
     </div>
 
     <!-- RIGHT -->
+    <!-- RIGHT -->
     <div class="flex flex-col gap-6">
+      <!-- Split & merge -->
       <div class="rounded-3xl border border-slate-800/70 bg-slate-900/60 p-5">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-300">Split &amp; merge</h3>
         <div class="mt-3 grid gap-2 text-xs text-slate-400">
-          <button type="button" on:click={mergePdfs} class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-40" disabled={pdfFiles.length < 2 || processing}>
+          <button
+            type="button"
+            on:click={mergePdfs}
+            class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-40"
+            disabled={pdfFiles.length < 2 || processing}
+            aria-busy={processing}
+          >
             Merge all PDFs
           </button>
           <p>Reorder PDFs above with ▲▼ to control merge order. The first PDF supplies the base filename.</p>
         </div>
       </div>
 
+      <!-- Image pages -->
       <div class="rounded-3xl border border-slate-800/70 bg-slate-900/60 p-5">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-300">Image pages</h3>
         <div class="grid gap-3 text-xs text-slate-400">
           <label class="flex items-center gap-2 text-slate-300">
             Page size
-            <select value={pageSizeOption} on:change={onPageSizeChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100">
+            <select
+              value={pageSizeOption}
+              on:change={onPageSizeChange}
+              class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100"
+            >
               {#each PAGE_SIZES as option}
                 <option value={option.id}>{option.label}</option>
               {/each}
             </select>
           </label>
+
           {#if pageSizeOption === 'custom'}
             <div class="flex items-center gap-2 text-xs text-slate-400">
-              <input type="number" min="10" max="500" bind:value={customPageWidthMm} on:change={persistSettings} class="w-20 rounded border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100" placeholder="Width (mm)" />
+              <input
+                type="number"
+                min="10"
+                max="500"
+                bind:value={customPageWidthMm}
+                on:change={persistSettings}
+                class="w-20 rounded border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100"
+                placeholder="Width (mm)"
+              />
               <span>×</span>
-              <input type="number" min="10" max="500" bind:value={customPageHeightMm} on:change={persistSettings} class="w-20 rounded border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100" placeholder="Height (mm)" />
+              <input
+                type="number"
+                min="10"
+                max="500"
+                bind:value={customPageHeightMm}
+                on:change={persistSettings}
+                class="w-20 rounded border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100"
+                placeholder="Height (mm)"
+              />
               <span>mm</span>
             </div>
           {/if}
 
           <label class="flex items-center gap-2 text-slate-300">
             Fit
-            <select value={fitOption} on:change={onFitChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100">
+            <select
+              value={fitOption}
+              on:change={onFitChange}
+              class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100"
+            >
               <option value="fit">Fit inside</option>
               <option value="fill">Fill page</option>
               <option value="stretch">Stretch</option>
@@ -991,14 +1027,24 @@
 
           <label class="flex items-center gap-2 text-slate-300">
             Orientation
-            <select value={orientationOption} on:change={onOrientationChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100">
+            <select
+              value={orientationOption}
+              on:change={onOrientationChange}
+              class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-100"
+            >
               <option value="auto">Auto</option>
               <option value="portrait">Portrait</option>
               <option value="landscape">Landscape</option>
             </select>
           </label>
 
-          <button type="button" on:click={imagesToPdf} class="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-40" disabled={imageAssets.length === 0 || processing}>
+          <button
+            type="button"
+            on:click={imagesToPdf}
+            class="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-40"
+            disabled={imageAssets.length === 0 || processing}
+            aria-busy={processing}
+          >
             Make PDF from images
           </button>
           <p class="text-[11px] text-slate-500">Images are embedded as pages locally in your browser. No uploads, no external requests.</p>
@@ -1008,12 +1054,21 @@
       {#if statusMessage || errorMessage}
         <div class="rounded-3xl border border-slate-800/70 bg-slate-900/60 p-5">
           <div class="space-y-2 text-xs">
-            {#if statusMessage}<p class="text-emerald-200" aria-live="polite">{statusMessage}</p>{/if}
-            {#if errorMessage}<p class="text-red-200" aria-live="assertive">{errorMessage}</p>{/if}
-            <button type="button" on:click={clearStatus} class="mt-1 rounded-full border border-slate-700 px-3 py-1 text-slate-300 transition hover:border-slate-500">Clear</button>
+            {#if statusMessage}
+              <p class="text-emerald-200" aria-live="polite">{statusMessage}</p>
+            {/if}
+            {#if errorMessage}
+              <p class="text-red-200" aria-live="assertive">{errorMessage}</p>
+            {/if}
+            <button
+              type="button"
+              on:click={clearStatus}
+              class="mt-1 rounded-full border border-slate-700 px-3 py-1 text-slate-300 transition hover:border-slate-500"
+            >
+              Clear
+            </button>
           </div>
         </div>
       {/if}
     </div>
-  </div>
 </ToolCard>
