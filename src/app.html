@@ -4,9 +4,24 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta
-			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' blob:; worker-src 'self' blob:; child-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'"
+		http-equiv="Content-Security-Policy"
+		content="
+			default-src 'self';
+			script-src 'self' 'unsafe-inline' blob:;
+			style-src 'self' 'unsafe-inline';
+			img-src 'self' blob: data:;
+			font-src 'self';
+			connect-src 'self' blob:;
+			worker-src 'self' blob:;
+			frame-src 'self' blob: data:;
+			/* optional: remove child-src, or at least don't set it to none.
+			If you keep it for older browsers, mirror the allowances: */
+			child-src 'self' blob:;
+			base-uri 'self';
+			form-action 'self'
+		"
 		/>
+
 		<meta name="referrer" content="no-referrer" />
 		<meta name="color-scheme" content="dark" />
 		%sveltekit.head%

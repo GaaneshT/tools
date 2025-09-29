@@ -43,6 +43,8 @@
 		"node": "22.20.0"
 	},
 	"dependencies": {
-		"cropperjs": "^1.6.2"
+		"cropperjs": "^1.6.2",
+		"pdf-lib": "^1.17.1",
+		"pdfjs-dist": "^5.4.149"
 	}
 }

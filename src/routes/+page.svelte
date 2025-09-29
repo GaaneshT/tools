@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ImageToolkit from '$lib/components/tools/ImageToolkit.svelte';
+	import PdfToolkit from '$lib/components/tools/PdfToolkit.svelte';
 </script>
 
 <section class="flex flex-col gap-6">
@@ -41,6 +42,9 @@
 <section class="mt-10 flex flex-col gap-6">
 	<ImageToolkit />
 </section>
+
+
+
 <div class="mt-2 flex justify-center">
   <span
     class="inline-flex items-center gap-2 rounded-full border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-emerald-200"
@@ -49,6 +53,10 @@
     Files never leave your device
   </span>
 </div>
+
+<section class="mt-10 flex flex-col gap-6">
+  <PdfToolkit />
+</section>
 
 <section
   class="mt-12 grid gap-4 rounded-3xl border border-slate-800/70 bg-slate-900/60 p-6 text-sm text-slate-300"
