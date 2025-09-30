@@ -197,25 +197,31 @@
     initialiseCropper();
   };
 
-  onMount(async () => {
-    const module = await import('cropperjs');
-    CropperCtor = module.default;
+  onMount(() => {
+    let disposed = false;
 
+    (async () => {
+      const module = await import('cropperjs');
+      if (disposed) return;
+      CropperCtor = module.default;
 
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s.selectedFormatValue) selectedFormatValue = s.selectedFormatValue;
-        if (typeof s.quality === 'number') quality = s.quality;
-        if (s.selectedPresetValue) selectedPresetValue = s.selectedPresetValue;
-        if (s.mode === 'resize' || s.mode === 'crop') mode = s.mode;
-        if (s.smoothing) smoothing = s.smoothing;
-        if (typeof s.keepAspectInResize === 'boolean') keepAspectInResize = s.keepAspectInResize; 
-      }
-    } catch { /* ignore */ }
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (s.selectedFormatValue) selectedFormatValue = s.selectedFormatValue;
+          if (typeof s.quality === 'number') quality = s.quality;
+          if (s.selectedPresetValue) selectedPresetValue = s.selectedPresetValue;
+          if (s.mode === 'resize' || s.mode === 'crop') mode = s.mode;
+          if (s.smoothing) smoothing = s.smoothing;
+          if (typeof s.keepAspectInResize === 'boolean') keepAspectInResize = s.keepAspectInResize;
+        }
+      } catch { /* ignore */ }
+    })().catch((err) => {
+      console.error('Failed to load cropperjs', err);
+      errorMessage = 'Unable to initialise cropper.';
+    });
 
-    // keyboard shortcuts
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === 'c' || e.key === 'C') mode = mode === 'crop' ? 'resize' : 'crop';
@@ -223,7 +229,11 @@
       if ((e.key === 'f' || e.key === 'F') && mode === 'crop') useFullImage();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+
+    return () => {
+      disposed = true;
+      window.removeEventListener('keydown', onKey);
+    };
   });
 
   onDestroy(() => {
@@ -518,11 +528,12 @@
     if (cropper) {
       cropper.setAspectRatio(NaN);
       cropper.reset();
-      cropper.setData({
-        left: 0,
-        top: 0,
-        width: Math.min(originalWidth, MAX_DIMENSION),
-        height: Math.min(originalHeight, MAX_DIMENSION)
+      const canvasData = cropper.getCanvasData();
+      cropper.setCropBoxData({
+        left: canvasData.left,
+        top: canvasData.top,
+        width: canvasData.width,
+        height: canvasData.height
       });
     }
     const exceeds = originalWidth > MAX_DIMENSION || originalHeight > MAX_DIMENSION;
@@ -592,7 +603,13 @@
     // Cover the full image
     cropper.setAspectRatio(NaN);
     cropper.reset();
-    cropper.setData({ left: 0, top: 0, width: originalWidth, height: originalHeight });
+    const canvasData = cropper.getCanvasData();
+    cropper.setCropBoxData({
+      left: canvasData.left,
+      top: canvasData.top,
+      width: canvasData.width,
+      height: canvasData.height
+    });
 
     const canvas = cropper.getCroppedCanvas({
       width,
@@ -1276,17 +1293,22 @@ const generateResult = async (downloadNow: boolean) => {
     max-width: 100% !important;
   }
 
-  /* clamp Cropper’s internal boxes to the container width */
+  /* clamp Cropper’s internal boxes to the container width
   .preview-frame--crop :global(.cropper-container),
   .preview-frame--crop :global(.cropper-wrap-box),
   .preview-frame--crop :global(.cropper-canvas),
   .preview-frame--crop :global(.cropper-drag-box),
   .preview-frame--crop :global(.cropper-crop-box),
   .preview-frame--crop :global(.cropper-modal) {
-    width: 100% !important;
-    max-width: 100% !important;
-    left: 0 !important;
-  }
+    width: 100% ;
+    max-width: 100% ;
+    left: 0 ;
+  } */
+
+  .preview-frame--crop { position: relative; }
+.preview-frame--crop :global(.cropper-container) { width: 100%; height: auto; }
+.preview-frame--crop img.preview-image { max-width: 100%; height: auto; display: block; }
+
 
   /* keep the cropper centered inside the frame */
   .preview-frame--crop :global(.cropper-container) { margin: 0 auto; }
