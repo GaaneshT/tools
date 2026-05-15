@@ -1,33 +1,29 @@
 <script lang="ts">
-	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
-	import SiteFooter from '$lib/components/SiteFooter.svelte';
-	import SiteHeader from '$lib/components/SiteHeader.svelte';
+  import '../app.css';
+  import Backdrop from '$lib/components/Backdrop.svelte';
+  import Nav from '$lib/components/Nav.svelte';
+  import CommandPalette from '$lib/components/CommandPalette.svelte';
+  import Footer from '$lib/components/Footer.svelte';
 
-	let { children } = $props();
+  let { children } = $props();
+  let paletteOpen = $state(false);
 </script>
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-	<meta
-		name="description"
-		content="Privacy-first, browser-only toolbox for file conversion, editing, and sanitization."
-	/>
-	<meta name="theme-color" content="#020617" />
-</svelte:head>
+<Backdrop />
 
-<div class="relative min-h-dvh bg-slate-950 text-slate-100">
-	<div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-		<div
-			class="absolute -top-1/2 left-1/2 size-[60rem] -translate-x-1/2 animate-[pulse_18s_ease-in-out_infinite] rounded-full bg-emerald-500/10 blur-3xl"
-		></div>
-		<div
-			class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,_185,_129,_0.12),_rgba(2,_6,_23,_0.6))]"
-		></div>
-	</div>
-	<SiteHeader />
-	<main class="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
-		{@render children?.()}
-	</main>
-	<SiteFooter />
-</div>
+<Nav onOpenPalette={() => (paletteOpen = true)} />
+
+<CommandPalette bind:open={paletteOpen} />
+
+<a
+  href="#top"
+  class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-ink-900 focus:px-3 focus:py-1.5 focus:text-sm focus:text-white"
+>
+  Skip to content
+</a>
+
+<main id="top" class="relative mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-12 pt-28 sm:px-6 md:pt-32">
+  {@render children?.()}
+</main>
+
+<Footer />

@@ -1,29 +1,58 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#060814" />
+		<meta name="color-scheme" content="dark light" />
+
 		<meta
-		http-equiv="Content-Security-Policy"
-		content="
-			default-src 'self';
-			script-src 'self' 'unsafe-inline' blob:;
-			style-src 'self' 'unsafe-inline';
-			img-src 'self' blob: data:;
-			font-src 'self';
-			connect-src 'self' blob:;
-			worker-src 'self' blob:;
-			frame-src 'self' blob: data:;
-			/* optional: remove child-src, or at least don't set it to none.
-			If you keep it for older browsers, mirror the allowances: */
-			child-src 'self' blob:;
-			base-uri 'self';
-			form-action 'self'
-		"
+			http-equiv="Content-Security-Policy"
+			content="
+				default-src 'self';
+				script-src 'self' 'unsafe-inline' blob:;
+				style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+				img-src 'self' blob: data:;
+				font-src 'self' https://fonts.gstatic.com;
+				connect-src 'self' blob:;
+				worker-src 'self' blob:;
+				frame-src 'self' blob: data:;
+				child-src 'self' blob:;
+				base-uri 'self';
+				form-action 'self'
+			"
+		/>
+		<meta name="referrer" content="no-referrer" />
+
+		<link rel="canonical" href="https://tools.gaanesh.com/" />
+		<title>Toolbelt · tools.gaanesh.com</title>
+		<meta name="description" content="A privacy-first browser-only toolbelt: hashes, encode/decode, JWT, HTTP header audits, regex, finance, and file utilities. Nothing leaves your browser." />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Toolbelt · tools.gaanesh.com" />
+		<meta property="og:description" content="Privacy-first browser-only toolbelt. Hashes, encode/decode, JWT, header audit, regex, finance, and files. Nothing leaves your browser." />
+		<meta property="og:url" content="https://tools.gaanesh.com/" />
+		<meta name="twitter:card" content="summary_large_image" />
+
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+			rel="stylesheet"
 		/>
 
-		<meta name="referrer" content="no-referrer" />
-		<meta name="color-scheme" content="dark" />
+		<script>
+			(function () {
+				try {
+					var saved = localStorage.getItem('theme');
+					var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+					var dark = saved ? saved === 'dark' : prefersDark;
+					if (!dark) document.documentElement.classList.remove('dark');
+					else document.documentElement.classList.add('dark');
+				} catch (_) {}
+			})();
+		</script>
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
