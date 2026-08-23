@@ -18,6 +18,8 @@
 >
   {#if name === 'home'}
     <path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/>
+  {:else if name === 'mail'}
+    <rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="m3 6.5 9 6 9-6"/>
   {:else if name === 'search'}
     <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
   {:else if name === 'terminal'}

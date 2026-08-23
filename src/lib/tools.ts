@@ -8,13 +8,26 @@ export type Tool = {
   name: string;
   path: string;          // route, e.g. '/hash'
   blurb: string;
-  category: 'crypto' | 'web' | 'dev' | 'finance' | 'files';
+  category: 'dfir' | 'crypto' | 'web' | 'dev' | 'finance' | 'files';
   status: ToolStatus;
   icon: string;          // Icon name; see Icon.svelte
   accent?: 'cyan' | 'violet' | 'green' | 'amber' | 'rose' | 'teal';
 };
 
 export const tools: Tool[] = [
+  // ── Incident response ─────────────────────────────────────────────────
+  {
+    id: 'email',
+    name: 'Email Header Analyzer',
+    path: '/email',
+    blurb:
+      'Paste raw email headers. Reconstructs the delivery path with per-hop timing and flags spoofing indicators: display-name tricks, Reply-To redirects, envelope mismatches, punycode senders.',
+    category: 'dfir',
+    status: 'ready',
+    icon: 'mail',
+    accent: 'cyan'
+  },
+
   // ── Crypto & encoding ─────────────────────────────────────────────────
   {
     id: 'hash',
@@ -105,6 +118,7 @@ export const tools: Tool[] = [
 ];
 
 export const categories = [
+  { id: 'dfir',    label: 'Incident response', command: '~/dfir',    accent: 'cyan'   as const },
   { id: 'crypto',  label: 'Crypto & encoding', command: '~/crypto',  accent: 'cyan'   as const },
   { id: 'web',     label: 'Web & network',      command: '~/web',     accent: 'amber'  as const },
   { id: 'dev',     label: 'Dev helpers',        command: '~/dev',     accent: 'rose'   as const },
