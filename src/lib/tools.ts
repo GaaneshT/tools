@@ -27,6 +27,17 @@ export const tools: Tool[] = [
     icon: 'mail',
     accent: 'cyan'
   },
+  {
+    id: 'sigma',
+    name: 'Sigma Rule Tester',
+    path: '/sigma',
+    blurb:
+      'Evaluate a Sigma rule against sample events and see which search identifiers matched. Rules using features it cannot evaluate are refused by name rather than silently returning no match.',
+    category: 'dfir',
+    status: 'beta',
+    icon: 'shield',
+    accent: 'violet'
+  },
 
   // ── Crypto & encoding ─────────────────────────────────────────────────
   {
