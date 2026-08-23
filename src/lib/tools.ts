@@ -75,7 +75,8 @@ export const tools: Tool[] = [
     id: 'regex',
     name: 'Regex Tester',
     path: '/regex',
-    blurb: 'Live regex matching with highlighting, capture groups, and a small library of common patterns.',
+    blurb:
+      'Live matching with highlighting and capture groups. Per-line mode for checking a pattern against log output, a capture table you can copy as TSV, and a warning for shapes that backtrack catastrophically.',
     category: 'web',
     status: 'ready',
     icon: 'regex',
