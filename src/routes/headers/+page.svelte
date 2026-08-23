@@ -40,7 +40,7 @@ X-Powered-By: Express`;
 
 <ToolFrame toolId="headers" command="audit --strict">
   {#snippet note()}
-    Paste any HTTP response header block. Status line is optional. We never fetch — paste your real headers from devtools or curl.
+    Paste any HTTP response header block. Status line is optional. We never fetch. Paste your real headers from devtools or curl.
   {/snippet}
 
   {#snippet actions()}
@@ -90,7 +90,7 @@ X-Powered-By: Express`;
                 <div class="flex flex-wrap items-center gap-2">
                   <h3 class="font-mono text-sm font-semibold text-ink-900 dark:text-white">{f.key}</h3>
                   <span class="rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide {style.chip}">{style.label}</span>
-                  <span class="font-mono text-xs text-ghost-500">— {f.summary}</span>
+                  <span class="font-mono text-xs text-ghost-500">{f.summary}</span>
                 </div>
                 <p class="mt-1.5 text-sm text-ink-600 dark:text-ghost-300">{f.detail}</p>
                 {#if f.raw}
@@ -104,7 +104,7 @@ X-Powered-By: Express`;
       </div>
     {:else}
       <p class="rounded-lg border border-ghost-200/60 bg-ghost-50/70 p-4 font-mono text-xs text-ghost-500 dark:border-ink-600/60 dark:bg-ink-950/60">
-        // paste headers above to start — or click "try sample"
+        // paste headers above to start, or click "try sample"
       </p>
     {/if}
   </div>

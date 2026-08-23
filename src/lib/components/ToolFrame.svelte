@@ -1,5 +1,4 @@
 <script lang="ts">
-  import PromptHeading from './PromptHeading.svelte';
   import { tools } from '$lib/tools';
 
   let {
@@ -17,33 +16,61 @@
   } = $props();
 
   const tool = tools.find((t) => t.id === toolId);
+  void command;
 </script>
 
-<section class="space-y-5">
-  <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-    <div class="space-y-2">
-      <a
-        href="/"
-        class="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-ghost-500 transition hover:text-neon-cyan"
-      >
-        ← back to toolbelt
-      </a>
-      <PromptHeading path={tool?.id ?? 'tool'} {command}>
-        {tool?.blurb ?? ''}
-      </PromptHeading>
-      <h1 class="text-2xl font-semibold text-balance text-ink-900 dark:text-white sm:text-3xl">
-        {tool?.name ?? 'Tool'}
-      </h1>
-      {#if note}<div class="font-mono text-xs text-ghost-500 dark:text-ghost-400">{@render note()}</div>{/if}
-    </div>
-    {#if actions}<div class="flex flex-wrap items-center gap-2">{@render actions()}</div>{/if}
-  </header>
+<section>
+  <div class="phead">
+    <a href="/" class="back"><span aria-hidden="true">&larr;</span> All tools</a>
+    <h1>{tool?.name ?? 'Tool'}</h1>
+    <p>{tool?.blurb ?? ''}</p>
+    {#if note}
+      <p class="note">{@render note()}</p>
+    {/if}
+  </div>
 
-  <div class="rounded-3xl border border-ghost-200/60 bg-white/85 p-5 shadow-xl backdrop-blur-xl dark:border-ink-600/60 dark:bg-ink-900/60 sm:p-7">
+  {#if actions}
+    <div class="frame-actions">{@render actions()}</div>
+  {/if}
+
+  <div class="panel">
     {@render children?.()}
   </div>
 
-  <p class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ghost-500">
-    <span class="dot-live"></span> all computation happens in your browser · nothing leaves this tab
-  </p>
+  <p class="assure">Everything here runs in your browser. Nothing leaves this tab.</p>
 </section>
+
+<style>
+  .phead .back { margin-bottom: 22px; }
+  .phead .note {
+    font-size: 14.5px;
+    color: var(--faint);
+    margin-top: 10px;
+  }
+
+  .frame-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .panel {
+    margin-top: 30px;
+    padding: 26px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+
+  @media (max-width: 600px) {
+    .panel { padding: 20px; }
+  }
+
+  .assure {
+    margin-top: 18px;
+    font-size: 13.5px;
+    color: var(--faint);
+  }
+</style>

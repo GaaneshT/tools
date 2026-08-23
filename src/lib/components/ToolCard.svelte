@@ -1,28 +1,27 @@
 <script lang="ts">
-	export let title: string;
-	export let description: string;
+	// ToolFrame already renders the page heading, blurb and surface for every
+	// tool route, so this is a plain pass-through container. The props are kept
+	// because the toolkits still pass them, but rendering them here would
+	// duplicate the heading and nest a second bordered panel inside ToolFrame's.
+	export let title: string = '';
+	export let description: string = '';
 	export let badge: string | null = null;
 	export let id: string | null = null;
+
+	void title;
+	void description;
+	void badge;
 </script>
 
-<section
-	id={id ?? undefined}
-	class="relative flex flex-col gap-6 rounded-3xl border border-slate-800/70 bg-slate-950/80 p-6 shadow-[0_40px_120px_-60px_rgba(16,185,129,0.45)]"
->
-	<header class="flex flex-col gap-2">
-		<div class="flex items-center gap-3">
-			<h2 class="text-xl font-semibold tracking-tight text-slate-50">{title}</h2>
-			{#if badge}
-				<span
-					class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium tracking-wide text-emerald-200 uppercase"
-				>
-					{badge}
-				</span>
-			{/if}
-		</div>
-		<p class="max-w-2xl text-sm text-slate-400">{description}</p>
-	</header>
-	<div class="grid gap-5 text-sm text-slate-200">
-		<slot />
-	</div>
+<section id={id ?? undefined} class="body">
+	<slot />
 </section>
+
+<style>
+	.body {
+		display: grid;
+		gap: 18px;
+		font-size: 15px;
+		color: var(--ink2);
+	}
+</style>

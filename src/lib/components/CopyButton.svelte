@@ -25,7 +25,7 @@
 <button
   type="button"
   onclick={click}
-  class="inline-flex items-center gap-1.5 rounded-md border border-ink-600/60 bg-ink-800/70 px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-wide text-ghost-300 transition hover:border-neon-cyan/50 hover:text-white {className}"
+  class="inline-flex items-center gap-1.5 rounded-[3px] border border-ghost-300 bg-transparent px-2.5 py-1 text-[12.5px] font-medium text-ink-700 transition hover:border-neon-cyan hover:text-neon-cyan {className}"
 >
   <Icon name={copied ? 'check' : 'copy'} size={11} />
   {copied ? 'copied' : label}

@@ -7,10 +7,10 @@
 
   type FlagId = 'g' | 'i' | 'm' | 's' | 'u' | 'y';
   const flagDefs: { id: FlagId; label: string; desc: string }[] = [
-    { id: 'g', label: 'g', desc: 'global — find all matches' },
+    { id: 'g', label: 'g', desc: 'global: find all matches' },
     { id: 'i', label: 'i', desc: 'case-insensitive' },
-    { id: 'm', label: 'm', desc: 'multiline — ^ and $ per line' },
-    { id: 's', label: 's', desc: 'dotAll — . matches newlines' },
+    { id: 'm', label: 'm', desc: 'multiline: ^ and $ per line' },
+    { id: 's', label: 's', desc: 'dotAll: . matches newlines' },
     { id: 'u', label: 'u', desc: 'unicode' },
     { id: 'y', label: 'y', desc: 'sticky' }
   ];
@@ -97,7 +97,7 @@
       <label class="block">
         <span class="mb-1 block font-mono text-[11px] uppercase tracking-[0.2em] text-ghost-500">pattern</span>
         <div class="flex items-stretch overflow-hidden rounded-xl border border-ghost-200/70 bg-white/95 font-mono text-sm dark:border-ink-600/60 dark:bg-ink-950/70">
-          <span class="flex items-center px-3 text-neon-cyan">/</span>
+          <span class="flex items-center px-3 text-ink-900">/</span>
           <input
             bind:value={pattern}
             type="text"
@@ -106,7 +106,7 @@
             placeholder="e.g. \\b\\w+@\\w+\\.\\w+\\b"
             class="flex-1 bg-transparent px-1 py-2.5 outline-none text-ink-900 dark:text-ghost-100"
           />
-          <span class="flex items-center pr-3 text-neon-cyan">/{flagString}</span>
+          <span class="flex items-center pr-3 text-ink-900">/{flagString}</span>
         </div>
       </label>
       <div class="flex flex-wrap gap-1.5">
@@ -115,7 +115,7 @@
             type="button"
             title={f.desc}
             onclick={() => (flags[f.id] = !flags[f.id])}
-            class="h-9 w-9 rounded-md border font-mono text-xs transition {flags[f.id] ? 'border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan' : 'border-ghost-200/70 text-ghost-500 hover:border-neon-cyan/30 dark:border-ink-600/60'}"
+            class="h-9 w-9 rounded-md border font-mono text-xs transition {flags[f.id] ? 'border-neon-cyan/60 bg-neon-cyan/10 text-ink-900' : 'border-ghost-200/70 text-ghost-500 hover:border-neon-cyan/30 dark:border-ink-600/60'}"
           >{f.label}</button>
         {/each}
       </div>
@@ -162,7 +162,7 @@
       <div class="rounded-2xl border border-ghost-200/70 bg-white/95 p-4 dark:border-ink-600/60 dark:bg-ink-800/60">
         <p class="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-ghost-500">
           <span>matches</span>
-          <span class="text-neon-cyan">{result.matches.length} hit{result.matches.length === 1 ? '' : 's'}</span>
+          <span class="text-ink-900">{result.matches.length} hit{result.matches.length === 1 ? '' : 's'}</span>
         </p>
         <div class="space-y-2">
           {#each result.matches as m, i}
@@ -171,7 +171,7 @@
                 <span class="text-ghost-500">#{i + 1} <span class="text-ghost-400">@</span> idx {m.index}</span>
                 <CopyButton value={m.value} label="copy match" />
               </div>
-              <div class="mt-1 break-all text-neon-cyan">{m.value}</div>
+              <div class="mt-1 break-all text-ink-900">{m.value}</div>
               {#if m.groups.length > 0}
                 <div class="mt-2 grid gap-1">
                   {#each m.groups as g}

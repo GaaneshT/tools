@@ -151,7 +151,7 @@
       <button
         type="button"
         onclick={() => (codec = c.id)}
-        class="rounded-full border px-3 py-1 font-mono text-xs transition {codec === c.id ? 'border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan' : 'border-ghost-200/70 text-ghost-500 hover:border-neon-cyan/30 hover:text-ink-900 dark:border-ink-600/60 dark:hover:text-white'}"
+        class="rounded-full border px-3 py-1 font-mono text-xs transition {codec === c.id ? 'border-neon-cyan/60 bg-neon-cyan/10 text-ink-900' : 'border-ghost-200/70 text-ghost-500 hover:border-neon-cyan/30 hover:text-ink-900 dark:border-ink-600/60 dark:hover:text-white'}"
       >
         {c.label}
       </button>
@@ -160,7 +160,7 @@
 
   <div class="mb-3 flex items-center gap-3 font-mono text-xs text-ghost-500">
     <span>codec:</span>
-    <span class="text-neon-cyan">{codecs.find((c) => c.id === codec)?.hint}</span>
+    <span class="text-ink-900">{codecs.find((c) => c.id === codec)?.hint}</span>
   </div>
 
   <!-- Direction toggle -->
@@ -168,12 +168,12 @@
     <button
       type="button"
       onclick={() => (direction = 'encode')}
-      class="rounded-full px-4 py-1.5 transition {direction === 'encode' ? 'bg-ink-900 text-neon-cyan dark:bg-ink-700' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
+      class="rounded-full px-4 py-1.5 transition {direction === 'encode' ? 'bg-neon-cyan text-ghost-50' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
     >encode →</button>
     <button
       type="button"
       onclick={() => (direction = 'decode')}
-      class="rounded-full px-4 py-1.5 transition {direction === 'decode' ? 'bg-ink-900 text-neon-cyan dark:bg-ink-700' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
+      class="rounded-full px-4 py-1.5 transition {direction === 'decode' ? 'bg-neon-cyan text-ghost-50' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
     >← decode</button>
   </div>
 

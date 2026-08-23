@@ -118,7 +118,7 @@
 
 <svelte:head>
   <title>Finance Calculator · tools.gaanesh.com</title>
-  <meta name="description" content="Compound interest, loan amortization, and savings-goal calculators — runs entirely in your browser." />
+  <meta name="description" content="Compound interest, loan amortization, and savings-goal calculators. runs entirely in your browser." />
 </svelte:head>
 
 <ToolFrame toolId="finance" command={`calc --mode ${mode}`}>
@@ -132,7 +132,7 @@
       <button
         type="button"
         onclick={() => (mode = t.id as Mode)}
-        class="rounded-full px-4 py-1.5 transition {mode === t.id ? 'bg-ink-900 text-neon-cyan dark:bg-ink-700' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
+        class="rounded-full px-4 py-1.5 transition {mode === t.id ? 'bg-neon-cyan text-ghost-50' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
       >{t.label}</button>
     {/each}
   </div>
@@ -182,8 +182,8 @@
               <p class="mt-1 text-xl font-semibold text-ink-900 dark:text-white">{fmtMoney(compResult.principalTotal)}</p>
             </div>
             <div class="rounded-xl border border-neon-cyan/30 bg-neon-cyan/5 p-3">
-              <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-neon-cyan">interest earned</p>
-              <p class="mt-1 text-xl font-semibold text-neon-cyan">{fmtMoney(compResult.interest)}</p>
+              <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-900">interest earned</p>
+              <p class="mt-1 text-xl font-semibold text-ink-900">{fmtMoney(compResult.interest)}</p>
             </div>
           </div>
 
@@ -262,7 +262,7 @@
               <tbody>
                 {#each loanResult.series as row}
                   <tr class="border-t border-ghost-200/40 dark:border-ink-600/40">
-                    <td class="px-3 py-1.5 text-neon-cyan">{row.year}</td>
+                    <td class="px-3 py-1.5 text-ink-900">{row.year}</td>
                     <td class="px-3 py-1.5">{fmtMoney(row.balance)}</td>
                     <td class="px-3 py-1.5">{fmtMoney(row.cumPrincipal)}</td>
                     <td class="px-3 py-1.5 text-neon-rose">{fmtMoney(row.cumInterest)}</td>

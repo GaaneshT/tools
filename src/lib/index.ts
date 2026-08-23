@@ -1,5 +1,3 @@
-export { default as SiteHeader } from './components/SiteHeader.svelte';
-export { default as SiteFooter } from './components/SiteFooter.svelte';
 export { default as ToolCard } from './components/ToolCard.svelte';
 export { default as ImageToolkit } from './components/tools/ImageToolkit.svelte';
 

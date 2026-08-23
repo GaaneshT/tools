@@ -13,7 +13,7 @@
 
 <ToolFrame toolId="image" command="cd files/">
   {#snippet note()}
-    Image and PDF utilities — image cropping, format conversion, metadata cleanup, PDF split/merge, image-to-PDF.
+    Image and PDF utilities: image cropping, format conversion, metadata cleanup, PDF split/merge, image-to-PDF.
   {/snippet}
 
   <div class="grid gap-4 md:grid-cols-2">

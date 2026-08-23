@@ -45,13 +45,13 @@
   });
 
   const claimDocs: Record<string, string> = {
-    iss: 'Issuer — who created the token',
-    sub: 'Subject — who the token is about',
-    aud: 'Audience — who the token is for',
-    exp: 'Expiration — token is invalid after this time',
-    nbf: 'Not before — token is invalid before this time',
-    iat: 'Issued at — when the token was created',
-    jti: 'JWT ID — unique identifier for replay protection'
+    iss: 'Issuer: who created the token',
+    sub: 'Subject: who the token is about',
+    aud: 'Audience: who the token is for',
+    exp: 'Expiration: token is invalid after this time',
+    nbf: 'Not before: token is invalid before this time',
+    iat: 'Issued at: when the token was created',
+    jti: 'JWT ID: unique identifier for replay protection'
   };
 
   const tsClaims = ['exp', 'nbf', 'iat'];
@@ -84,7 +84,7 @@
 
 <svelte:head>
   <title>JWT Inspector · tools.gaanesh.com</title>
-  <meta name="description" content="Decode and inspect JSON Web Tokens (JWTs) in your browser. Decode-only — never verified online." />
+  <meta name="description" content="Decode and inspect JSON Web Tokens (JWTs) in your browser. Decode-only. never verified online." />
 </svelte:head>
 
 <ToolFrame toolId="jwt" command="decode --no-verify">
@@ -122,7 +122,7 @@
         <!-- Header -->
         <div class="rounded-2xl border border-neon-cyan/30 bg-white/95 p-4 dark:bg-ink-800/60">
           <div class="mb-2 flex items-center justify-between">
-            <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-neon-cyan">header</span>
+            <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-900">header</span>
             <CopyButton value={d.headerRaw} />
           </div>
           <pre class="overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-ink-700 dark:text-ghost-200">{JSON.stringify(d.header, null, 2)}</pre>
@@ -144,14 +144,14 @@
             <CopyButton value={d.signature} />
           </div>
           <pre class="overflow-x-auto break-all font-mono text-xs text-ink-700 dark:text-ghost-200">{d.signature || '(none)'}</pre>
-          <p class="mt-2 font-mono text-[10px] text-ghost-500">// not verified — paste your secret elsewhere to verify</p>
+          <p class="mt-2 font-mono text-[10px] text-ghost-500">// not verified. paste your secret elsewhere to verify</p>
         </div>
       </div>
 
       <!-- Annotated claims -->
       <div class="rounded-2xl border border-ghost-200/70 bg-white/95 p-4 dark:border-ink-600/60 dark:bg-ink-800/60">
         <div class="mb-3 flex items-center justify-between">
-          <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-neon-cyan">claims</span>
+          <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-900">claims</span>
           {#if expiryInfo}
             <span class="font-mono text-[11px] {expiryInfo.cls}">{expiryInfo.label}</span>
           {/if}
@@ -161,7 +161,7 @@
           {#each Object.entries(d.payload) as [key, value]}
             <div class="grid grid-cols-[6rem_1fr] items-start gap-3 border-b border-ghost-200/40 py-1.5 last:border-b-0 dark:border-ink-600/40">
               <div class="font-mono text-xs">
-                <span class="text-neon-cyan">{key}</span>
+                <span class="text-ink-900">{key}</span>
                 {#if claimDocs[key]}<span class="ml-1 text-[10px] text-ghost-500">·</span>{/if}
               </div>
               <div class="font-mono text-xs text-ink-700 dark:text-ghost-200">

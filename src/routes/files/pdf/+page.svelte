@@ -5,7 +5,7 @@
 
 <svelte:head>
   <title>PDF Toolkit · tools.gaanesh.com</title>
-  <meta name="description" content="Split, merge, convert images to PDF, and strip metadata. Browser-only — no uploads." />
+  <meta name="description" content="Split, merge, convert images to PDF, and strip metadata. Browser-only. no uploads." />
 </svelte:head>
 
 <ToolFrame toolId="pdf" command="open pdf">

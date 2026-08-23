@@ -95,7 +95,7 @@
       <button
         type="button"
         onclick={() => (mode = m as Mode)}
-        class="rounded-full px-4 py-1.5 transition {mode === m ? 'bg-ink-900 text-neon-cyan dark:bg-ink-700' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
+        class="rounded-full px-4 py-1.5 transition {mode === m ? 'bg-neon-cyan text-ghost-50' : 'text-ghost-500 hover:text-ink-900 dark:hover:text-white'}"
       >
         {m}
       </button>
@@ -121,7 +121,7 @@
       <div class="grid gap-2">
         {#each ALL_ALGOS as algo}
           <div class="flex items-center gap-3 rounded-xl border border-ghost-200/60 bg-ghost-50/70 p-3 dark:border-ink-600/60 dark:bg-ink-950/60">
-            <span class="w-20 shrink-0 font-mono text-xs font-semibold text-neon-cyan">{algo}</span>
+            <span class="w-20 shrink-0 font-mono text-xs font-semibold text-ink-900">{algo}</span>
             <span class="min-w-0 flex-1 truncate font-mono text-xs text-ink-700 dark:text-ghost-200">
               {textHashes?.[algo] ?? (textComputing ? 'computing…' : '—')}
             </span>
@@ -133,7 +133,7 @@
       </div>
 
       <p class="font-mono text-[11px] text-ghost-500">
-        bytes: <span class="text-neon-cyan">{new TextEncoder().encode(text).length}</span>
+        bytes: <span class="text-ink-900">{new TextEncoder().encode(text).length}</span>
       </p>
     </div>
   {:else}
@@ -160,7 +160,7 @@
             <div><span class="text-ghost-500">name:</span> <span class="text-ink-900 dark:text-ghost-100">{fileName}</span></div>
             <div><span class="text-ghost-500">size:</span> <span class="text-ink-900 dark:text-ghost-100">{formatBytes(fileSize)}</span></div>
             {#if fileEntropy !== null}
-              <div><span class="text-ghost-500">entropy:</span> <span class="text-neon-cyan">{fileEntropy.toFixed(3)} bits/byte</span></div>
+              <div><span class="text-ghost-500">entropy:</span> <span class="text-ink-900">{fileEntropy.toFixed(3)} bits/byte</span></div>
             {/if}
           </div>
 
@@ -173,7 +173,7 @@
           <div class="grid gap-2">
             {#each ALL_ALGOS as algo}
               <div class="flex items-center gap-3 rounded-xl border border-ghost-200/60 bg-ghost-50/70 p-3 dark:border-ink-600/60 dark:bg-ink-950/60">
-                <span class="w-20 shrink-0 font-mono text-xs font-semibold text-neon-cyan">{algo}</span>
+                <span class="w-20 shrink-0 font-mono text-xs font-semibold text-ink-900">{algo}</span>
                 <span class="min-w-0 flex-1 truncate font-mono text-xs text-ink-700 dark:text-ghost-200">
                   {fileHashes?.[algo] ?? (fileComputing ? 'computing…' : '—')}
                 </span>
