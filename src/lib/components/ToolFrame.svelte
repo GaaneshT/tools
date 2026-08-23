@@ -17,7 +17,22 @@
 
   const tool = tools.find((t) => t.id === toolId);
   void command;
+
+  const SITE = 'https://tools.gaanesh.com';
+  const url = `${SITE}${tool?.path ?? ''}`;
 </script>
+
+<!-- Each route sets its own title and description. Canonical and og live here
+     so every tool page identifies itself rather than pointing at the suite
+     root, which is what happened while these were defaults in app.html. -->
+<svelte:head>
+  <link rel="canonical" href={url} />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={`${tool?.name ?? 'Tool'} · tools.gaanesh.com`} />
+  <meta property="og:description" content={tool?.blurb ?? ''} />
+  <meta property="og:url" content={url} />
+  <meta name="twitter:card" content="summary" />
+</svelte:head>
 
 <section>
   <div class="phead">

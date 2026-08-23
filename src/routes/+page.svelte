@@ -16,6 +16,15 @@
     name="description"
     content="Browser-only utilities for security and everyday work. No uploads, no server, nothing leaves the tab."
   />
+  <link rel="canonical" href="https://tools.gaanesh.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Tools · tools.gaanesh.com" />
+  <meta
+    property="og:description"
+    content="Browser-only utilities for security and everyday work. No uploads, no server, nothing leaves the tab."
+  />
+  <meta property="og:url" content="https://tools.gaanesh.com/" />
+  <meta name="twitter:card" content="summary" />
 </svelte:head>
 
 <div class="phead">

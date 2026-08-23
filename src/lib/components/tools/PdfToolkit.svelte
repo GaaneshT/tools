@@ -1242,17 +1242,17 @@
           </label>
 
           <div class="flex flex-wrap items-center gap-2">
-            <select value={fitOption} on:change={onFitChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-xs text-slate-200">
+            <select aria-label="Image fit" value={fitOption} on:change={onFitChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-xs text-slate-200">
               <option value="fit">Fit inside</option>
               <option value="fill">Fill page</option>
               <option value="stretch">Stretch</option>
             </select>
-            <select value={orientationOption} on:change={onOrientationChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-xs text-slate-200">
+            <select aria-label="Page orientation" value={orientationOption} on:change={onOrientationChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-xs text-slate-200">
               <option value="auto">Auto orientation</option>
               <option value="portrait">Portrait</option>
               <option value="landscape">Landscape</option>
             </select>
-            <select value={pageSizeOption} on:change={onPageSizeChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-xs text-slate-200">
+            <select aria-label="Page size" value={pageSizeOption} on:change={onPageSizeChange} class="rounded-lg border border-slate-800/70 bg-slate-900/70 px-2 py-1 text-xs text-slate-200">
               {#each PAGE_SIZES as option}
                 <option value={option.id}>{option.label}</option>
               {/each}
@@ -1337,7 +1337,7 @@
                       <button
                         type="button"
                         on:click={() => clearMetadata(pdf)}
-                        class="inline-flex items-center gap-2 rounded-full border border-red-400/60 px-3 py-1 text-red-200 transition hover:bg-red-500/10 disabled:opacity-40"
+                        class="inline-flex items-center gap-2 rounded-full border border-red-400/60 px-3 py-1 text-neon-rose transition hover:bg-red-500/10 disabled:opacity-40"
                         disabled={!hasAnyMeta(pdf) || processing}
                         title={hasAnyMeta(pdf) ? 'Clear basic metadata' : 'Nothing to clear'}
                       >
@@ -1479,7 +1479,7 @@
                     >▶</button>
                   </div>
 
-                  <button type="button" on:click={() => removeImage(asset.id)} class="absolute right-2 bottom-2 z-10 rounded-full bg-slate-900/80 px-2 py-1 text-xs text-slate-300 transition hover:bg-red-500/30 hover:text-red-100">✕</button>
+                  <button type="button" on:click={() => removeImage(asset.id)} class="absolute right-2 bottom-2 z-10 rounded-full bg-slate-900/80 px-2 py-1 text-xs text-slate-300 transition hover:bg-red-500/30 hover:text-neon-rose">✕</button>
 
                   <img src={asset.objectUrl} alt={asset.name} class="h-32 w-full select-none object-cover" />
                   <div class="p-2 text-xs text-slate-400">
@@ -1489,7 +1489,7 @@
                 </div>
               {/each}
             </div>
-            <button type="button" on:click={clearImageList} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-red-200">Clear images</button>
+            <button type="button" on:click={clearImageList} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-neon-rose">Clear images</button>
           </div>
         {/if}
       </div>
@@ -1603,7 +1603,7 @@
               <p class="text-emerald-200" aria-live="polite">{statusMessage}</p>
             {/if}
             {#if errorMessage}
-              <p class="text-red-200" aria-live="assertive">{errorMessage}</p>
+              <p class="text-neon-rose" aria-live="assertive">{errorMessage}</p>
             {/if}
             <button
               type="button"
@@ -1663,7 +1663,7 @@
               <button
                 type="button"
                 on:click={clearAnnotationsForPage}
-                class="w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-red-200 disabled:opacity-40"
+                class="w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-neon-rose disabled:opacity-40"
                 disabled={activePageAnnotations.length === 0}
               >
                 Clear page annotations
@@ -1686,7 +1686,7 @@
                     Ink colour
                     <input type="color" bind:value={signatureInkColor} class="h-8 w-16 cursor-pointer rounded border border-slate-700 bg-transparent" />
                   </label>
-                  <button type="button" on:click={clearSignatureCanvas} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-red-200">Clear</button>
+                  <button type="button" on:click={clearSignatureCanvas} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-red-400/60 hover:text-neon-rose">Clear</button>
                   <button type="button" on:click={useSignatureFromCanvas} class="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200 transition hover:bg-emerald-500/20">Use drawing</button>
                 </div>
               </div>
@@ -1724,7 +1724,7 @@
                     <span>
                       {item.type === 'highlight' ? 'Highlight' : 'Signature'}
                     </span>
-                    <button type="button" on:click={() => removeAnnotation(item.id)} class="rounded-full border border-red-400/60 px-2 py-0.5 text-[11px] text-red-200 transition hover:bg-red-500/10">Remove</button>
+                    <button type="button" on:click={() => removeAnnotation(item.id)} class="rounded-full border border-red-400/60 px-2 py-0.5 text-[11px] text-neon-rose transition hover:bg-red-500/10">Remove</button>
                   </li>
                 {/each}
               </ul>

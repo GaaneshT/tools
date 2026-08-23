@@ -12,6 +12,13 @@
   };
   const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
+  // Inputs arrive from number fields, so they can be empty, negative or large
+  // enough to overflow to Infinity. Reject them up front rather than letting a
+  // non-finite value reach the maths or the chart.
+  const bad = (n: unknown): boolean => typeof n !== 'number' || !Number.isFinite(n);
+  const MAX_MONEY = 1e12;
+  const MAX_YEARS = 200;
+
   // ───────── Compound interest ──────────────────────────────────────────
   let compPrincipal = $state(10000);
   let compMonthly = $state(500);
@@ -19,13 +26,24 @@
   let compYears = $state(20);
   let compCompound = $state(12); // times per year
 
+  const compError = $derived.by<string | null>(() => {
+    const P = compPrincipal, PMT = compMonthly, t = compYears, n = compCompound;
+    if ([P, PMT, compRate, t, n].some(bad)) return 'Enter a number in every field.';
+    if (P < 0 || PMT < 0) return 'Principal and contribution cannot be negative.';
+    if (compRate < -100) return 'Rate cannot be below -100%.';
+    if (t < 0 || n < 1) return 'Years and compounding periods must be positive.';
+    if (t > MAX_YEARS) return `Keep the term under ${MAX_YEARS} years.`;
+    if (P > MAX_MONEY || PMT > MAX_MONEY) return 'Amount is unrealistically large.';
+    return null;
+  });
+
   const compResult = $derived.by(() => {
+    if (compError) return null;
     const r = compRate / 100;
     const n = clamp(compCompound, 1, 365);
     const t = compYears;
     const P = compPrincipal;
     const PMT = compMonthly;
-    if (t < 0 || n < 1) return null;
 
     // FV with monthly contributions; treat contributions as monthly even when
     // compounding differs (most users intuit a monthly contribution).
@@ -54,10 +72,20 @@
   let loanRate = $state(3.5);
   let loanYears = $state(25);
 
+  const loanError = $derived.by<string | null>(() => {
+    if ([loanPrincipal, loanRate, loanYears].some(bad)) return 'Enter a number in every field.';
+    if (loanPrincipal <= 0) return 'Loan amount must be greater than zero.';
+    if (loanRate < 0) return 'Interest rate cannot be negative.';
+    if (loanYears * 12 <= 0) return 'Term must be at least one month.';
+    if (loanYears > MAX_YEARS) return `Keep the term under ${MAX_YEARS} years.`;
+    if (loanPrincipal > MAX_MONEY) return 'Amount is unrealistically large.';
+    return null;
+  });
+
   const loanResult = $derived.by(() => {
+    if (loanError) return null;
     const r = loanRate / 100 / 12;
     const n = loanYears * 12;
-    if (loanPrincipal <= 0 || n <= 0) return null;
     const monthly = r === 0 ? loanPrincipal / n : loanPrincipal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
     const totalPaid = monthly * n;
     const totalInterest = totalPaid - loanPrincipal;
@@ -89,10 +117,22 @@
   let goalMonthly = $state(800);
   let goalRate = $state(5);
 
+  const goalError = $derived.by<string | null>(() => {
+    if ([goalTarget, goalCurrent, goalMonthly, goalRate].some(bad))
+      return 'Enter a number in every field.';
+    if (goalTarget <= 0) return 'Target must be greater than zero.';
+    if (goalCurrent < 0 || goalMonthly < 0) return 'Savings and contribution cannot be negative.';
+    if (goalTarget > MAX_MONEY) return 'Target is unrealistically large.';
+    if (goalRate < 0) return 'Rate cannot be negative.';
+    if (goalTarget > goalCurrent && goalMonthly <= 0 && goalRate === 0)
+      return 'Add a monthly contribution or a rate, otherwise the balance never grows.';
+    return null;
+  });
+
   const goalResult = $derived.by(() => {
+    if (goalError) return null;
     const r = goalRate / 100 / 12;
-    if (goalTarget <= goalCurrent) return { months: 0, years: 0, label: 'already there 🎯' };
-    if (goalMonthly <= 0 && r === 0) return null;
+    if (goalTarget <= goalCurrent) return { months: 0, years: 0, label: 'Already there' };
     let balance = goalCurrent;
     let months = 0;
     while (balance < goalTarget && months < 12 * 200) {
@@ -105,9 +145,10 @@
 
   // ───────── Sparkline helper ───────────────────────────────────────────
   function sparkline(values: number[], width = 600, height = 120): string {
-    if (values.length === 0) return '';
+    if (values.length === 0 || values.some((v) => !Number.isFinite(v))) return '';
     const min = Math.min(...values);
     const max = Math.max(...values);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return '';
     const range = max - min || 1;
     const stepX = width / (values.length - 1 || 1);
     return values
@@ -170,7 +211,11 @@
       </div>
 
       <!-- Output -->
-      {#if compResult}
+      {#if compError}
+        <div class="rounded-[3px] border border-neon-rose/40 bg-neon-rose/10 p-4 text-[14px] text-neon-rose" role="alert">
+          {compError}
+        </div>
+      {:else if compResult}
         <div class="space-y-4">
           <div class="grid grid-cols-3 gap-3">
             <div class="rounded-xl border border-neon-green/30 bg-neon-green/5 p-3">
@@ -222,7 +267,11 @@
         </label>
       </div>
 
-      {#if loanResult}
+      {#if loanError}
+        <div class="rounded-[3px] border border-neon-rose/40 bg-neon-rose/10 p-4 text-[14px] text-neon-rose" role="alert">
+          {loanError}
+        </div>
+      {:else if loanResult}
         <div class="space-y-4">
           <div class="grid grid-cols-3 gap-3">
             <div class="rounded-xl border border-neon-green/30 bg-neon-green/5 p-3">
@@ -297,9 +346,13 @@
       </div>
 
       <div class="space-y-4">
-        {#if goalResult === null}
-          <div class="rounded-xl border border-neon-rose/30 bg-neon-rose/5 p-4 font-mono text-sm text-neon-rose">
-            Not reachable with the current contributions in 200 years. Increase the monthly amount or the rate.
+        {#if goalError}
+          <div class="rounded-[3px] border border-neon-rose/40 bg-neon-rose/10 p-4 text-[14px] text-neon-rose" role="alert">
+            {goalError}
+          </div>
+        {:else if goalResult === null}
+          <div class="rounded-[3px] border border-neon-rose/40 bg-neon-rose/10 p-4 text-[14px] text-neon-rose" role="alert">
+            Not reachable within 200 years. Increase the monthly amount or the rate.
           </div>
         {:else}
           <div class="rounded-2xl border border-neon-green/30 bg-neon-green/5 p-5 text-center">

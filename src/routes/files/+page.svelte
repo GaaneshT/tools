@@ -9,6 +9,12 @@
 <svelte:head>
   <title>Files · tools.gaanesh.com</title>
   <meta name="description" content="Image and PDF utilities, all running in your browser." />
+  <link rel="canonical" href="https://tools.gaanesh.com/files" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Files · tools.gaanesh.com" />
+  <meta property="og:description" content="Image and PDF utilities, all running in your browser." />
+  <meta property="og:url" content="https://tools.gaanesh.com/files" />
+  <meta name="twitter:card" content="summary" />
 </svelte:head>
 
 <ToolFrame toolId="image" command="cd files/">

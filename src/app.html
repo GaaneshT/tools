@@ -24,15 +24,10 @@
 		/>
 		<meta name="referrer" content="no-referrer" />
 
-		<link rel="canonical" href="https://tools.gaanesh.com/" />
-		<title>Tools · tools.gaanesh.com</title>
-		<meta name="description" content="A privacy-first browser-only toolbelt: hashes, encode/decode, JWT, HTTP header audits, regex, finance, and file utilities. Nothing leaves your browser." />
-
-		<meta property="og:type" content="website" />
-		<meta property="og:title" content="Tools · tools.gaanesh.com" />
-		<meta property="og:description" content="Privacy-first browser-only toolbelt. Hashes, encode/decode, JWT, header audit, regex, finance, and files. Nothing leaves your browser." />
-		<meta property="og:url" content="https://tools.gaanesh.com/" />
-		<meta name="twitter:card" content="summary_large_image" />
+		<!-- Title, description, canonical and the og tags are set per route via
+		     svelte:head. Do not add defaults here: this markup is emitted first,
+		     and a crawler takes the first occurrence, so anything here silently
+		     overrides every tool page. -->
 
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
