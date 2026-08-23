@@ -97,8 +97,10 @@
     return JSON.stringify(s).slice(1, -1);
   }
   function jsonUnescape(s: string): string {
-    // Wrap in quotes and parse
-    return JSON.parse(`"${s.replaceAll('"', '\\"')}"`);
+    // Wrap in quotes and parse. Only bare quotes are escaped: consuming any
+    // existing escape sequence first leaves an already-escaped \" alone, which
+    // would otherwise become \\" and terminate the string early.
+    return JSON.parse(`"${s.replace(/\\[\s\S]|"/g, (m) => (m === '"' ? '\\"' : m))}"`);
   }
 
   // Process input ---------------------------------------------------------
