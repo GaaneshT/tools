@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tools, categories } from '$lib/tools';
-  import { identity, links } from '$lib/identity';
+  import { identity } from '$lib/identity';
 
   const groups = categories
     .map((category) => ({
@@ -48,19 +48,3 @@
     {/each}
   </div>
 {/each}
-
-<section class="end">
-  <p class="q">Something <span class="hl">missing?</span></p>
-  <p>
-    These exist because I needed them. If there is one you keep looking for, tell me and I will
-    probably build it.
-  </p>
-  <a class="mail" href="mailto:{identity.email}">{identity.email}</a>
-  <div>
-    <a class="back" href={links.portfolio}><span aria-hidden="true">&larr;</span> Back to start</a>
-  </div>
-</section>
-
-<style>
-  .end .back { margin-top: 30px; }
-</style>
